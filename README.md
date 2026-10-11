@@ -1,5 +1,7 @@
 # WorkLogSync 接管仓库
 
+公开仓库：[zhishuo0406-coder/worklog-sync](https://github.com/zhishuo0406-coder/worklog-sync)。2026-10-11已通过本地Git完成首次推送，并核对远端main提交；发布保留独立审查发现的待修复问题。
+
 完整项目已从本机既有交付ZIP接收，保留原源代码与开发文档。本轮仅进行接收、独立审查、隔离测试和Git管理准备，没有部署、发信或改动现有任务。
 
 - 当前程序与使用说明：[WorkLogSync/README.md](WorkLogSync/README.md)

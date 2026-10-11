@@ -23,3 +23,7 @@
 ## 授权与执行边界
 
 首轮审查仅准备本地版本。后续用户明确授权上传、要求Public并完成GitHub插件连接，因此可继续创建目标仓库和首次推送。插件安装不等于本地Git已获得认证；发布工具和认证需实际核实，不能因用户完成连接就声称上传成功。本次仍不部署、不改现有定时任务、不发送邮件。
+
+## 已完成的发布
+
+2026-10-11用户完成Windows Git Credential Manager授权，要求通过本地Git上传。已核对认证账号为zhishuo0406-coder，创建Public仓库 https://github.com/zhishuo0406-coder/worklog-sync，通过git push推送main，并以git ls-remote核对初始提交7bf9d24e975224c491bb27b19bf4288cf7c6e08a。未再尝试插件或浏览器连接；发布记录作为后续文档提交保留，不修改运行代码。
