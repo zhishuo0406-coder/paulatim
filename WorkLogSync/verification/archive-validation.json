@@ -1,0 +1,18 @@
+{
+  "VerifiedAtUtc": "2026-10-11T14:49:55.6534349+00:00",
+  "ArchiveExtracted": true,
+  "ManifestPayloadVerified": true,
+  "SourceRebuilt": true,
+  "WindowsPowerShellVersion": "5.1",
+  "ExecutionPolicy": "RemoteSigned in test process only",
+  "SyncPassed": 22,
+  "OfflineMailPassed": 28,
+  "IntegrationPassed": 4,
+  "SampleRecordCount": 3,
+  "RawCsvBytesUnchanged": true,
+  "MailDisabled": true,
+  "NoModelOrMailDuringArchiveTests": true,
+  "NoTasksRegistered": true,
+  "PrivacyScan": "PASS",
+  "Scope": "Extracted executable payload verified; final archive adds this result, revised deployment notes and refreshed manifest."
+}

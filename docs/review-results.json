@@ -1,0 +1,10 @@
+{
+  "OriginalOfflineChecks": 54,
+  "SyncPassed": 22,
+  "MailOfflinePassed": 28,
+  "IntegrationPassed": 4,
+  "IndependentPassed": 8,
+  "IndependentFindings": 3,
+  "NoDeployment": true,
+  "NoMailSent": true
+}

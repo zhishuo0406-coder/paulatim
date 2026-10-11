@@ -1,0 +1,90 @@
+[
+  {
+    "test": "windows-subsystem-no-console",
+    "passed": true
+  },
+  {
+    "test": "first-row-and-daily-totals",
+    "passed": true
+  },
+  {
+    "test": "unchanged-no-rewrite",
+    "passed": true
+  },
+  {
+    "test": "update-and-previous-copy",
+    "passed": true
+  },
+  {
+    "test": "reject-and-preserve-negative",
+    "passed": true
+  },
+  {
+    "test": "reject-and-preserve-bad_number",
+    "passed": true
+  },
+  {
+    "test": "reject-and-preserve-bad_date",
+    "passed": true
+  },
+  {
+    "test": "reject-and-preserve-wrong_columns",
+    "passed": true
+  },
+  {
+    "test": "reject-and-preserve-empty",
+    "passed": true
+  },
+  {
+    "test": "reject-and-preserve-unclosed_quote",
+    "passed": true
+  },
+  {
+    "test": "quotes-commas-newlines-decimals",
+    "passed": true
+  },
+  {
+    "test": "header-bom-and-zero-denominator",
+    "passed": true
+  },
+  {
+    "test": "duplicate-and-overrun-warnings",
+    "passed": true
+  },
+  {
+    "test": "missing-source-preserves-copy",
+    "passed": true
+  },
+  {
+    "test": "writer-lock-and-recovery",
+    "passed": true
+  },
+  {
+    "test": "concurrent-instance-and-recovery",
+    "passed": true
+  },
+  {
+    "test": "invalid-utf8-rejected",
+    "passed": true
+  },
+  {
+    "test": "size-limit-enforced",
+    "passed": true
+  },
+  {
+    "test": "source-destination-collision",
+    "passed": true
+  },
+  {
+    "test": "weekly-boundary-and-empty-daily",
+    "passed": true
+  },
+  {
+    "test": "corrupt-status-recovers-on-failure",
+    "passed": true
+  },
+  {
+    "test": "source-never-modified",
+    "passed": true
+  }
+]

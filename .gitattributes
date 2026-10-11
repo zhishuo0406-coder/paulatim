@@ -1,0 +1,10 @@
+* text=auto
+.gitignore text eol=lf
+.gitattributes text eol=lf
+*.csv text eol=lf
+*.cs text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.ps1 text eol=crlf
+*.sha256 text eol=lf
+*.exe binary

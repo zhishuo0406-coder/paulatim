@@ -1,0 +1,33 @@
+# Local settings and private data
+config.json
+mail-config.json
+*.csv
+!examples/sample-work-log.csv
+work_log.csv.previous
+sync-status.json
+report-data.json
+mail-state.json
+mail-status.json
+*.lock
+*.log
+*.log.*
+outbox/
+backup*/
+configuration-backups/
+test-runs/
+mail-test-runs/
+mail-tests.json
+mail-integration-results.json
+# Keep explicitly sanitized historical verification reports in Git.
+!verification/mail-tests.json
+*.tmp
+# Generated binaries; ZIP includes clean binaries, Git should rebuild them
+*.exe
+*.pdb
+*.xml
+.env
+.env.*
+auth.json
+credentials*
+*.pem
+*.key

@@ -1,0 +1,7 @@
+{
+  "Fixture": "<isolated-test-directory>",
+  "NoDueNoModel": true,
+  "ConcurrentSkipped": true,
+  "CorruptReceiptsPreserved": true,
+  "WindowsSubsystem": 2
+}

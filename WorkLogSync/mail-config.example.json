@@ -1,0 +1,8 @@
+{
+  "enabled": false,
+  "recipient": "your-account@gmail.com",
+  "first_daily_report": "2030-01-01",
+  "first_weekly_end": "2030-01-05",
+  "max_attempts_per_period": 3,
+  "timeout_minutes": 10
+}

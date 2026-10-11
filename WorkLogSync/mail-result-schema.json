@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["results"],
+  "properties": {
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "status", "message_id", "detail"],
+        "properties": {
+          "key": {"type": "string"},
+          "status": {"type": "string", "enum": ["sent", "already_sent", "failed", "uncertain"]},
+          "message_id": {"type": "string"},
+          "detail": {"type": "string"}
+        }
+      }
+    }
+  }
+}

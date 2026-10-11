@@ -1,0 +1,57 @@
+[
+    {
+        "name":  "late-login-selects-previous-calendar-day",
+        "passed":  true,
+        "detail":  ""
+    },
+    {
+        "name":  "multiple-days-offline-latest-daily-and-weekly-only",
+        "passed":  true,
+        "detail":  ""
+    },
+    {
+        "name":  "daily-confirmed-weekly-remains-due",
+        "passed":  true,
+        "detail":  ""
+    },
+    {
+        "name":  "weekly-report-boundaries-and-independent-totals",
+        "passed":  true,
+        "detail":  ""
+    },
+    {
+        "name":  "report-task-text-html-escaped",
+        "passed":  true,
+        "detail":  ""
+    },
+    {
+        "name":  "mail-attachment-keeps-exact-source-bytes",
+        "passed":  true,
+        "detail":  ""
+    },
+    {
+        "name":  "full-raw-snapshot-in-body-includes-outside-period",
+        "passed":  true,
+        "detail":  ""
+    },
+    {
+        "name":  "source-failure-blocks-snapshot-without-sending",
+        "passed":  true,
+        "detail":  ""
+    },
+    {
+        "name":  "trailing-newline-in-recipient-must-be-rejected",
+        "passed":  false,
+        "detail":  "Defect: trailing LF is accepted by the recipient regex"
+    },
+    {
+        "name":  "trailing-newline-in-message-id-must-be-rejected",
+        "passed":  false,
+        "detail":  "Defect: trailing LF receipt is accepted"
+    },
+    {
+        "name":  "unverified-synthetic-id-is-not-a-server-verification",
+        "passed":  false,
+        "detail":  "Risk: a syntactically valid synthetic ID is accepted without independent Gmail verification"
+    }
+]
