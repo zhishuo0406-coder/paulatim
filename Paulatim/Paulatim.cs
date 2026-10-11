@@ -10,7 +10,7 @@ using System.Web.Script.Serialization;
 using Microsoft.VisualBasic.FileIO;
 
 // Built as a Windows-subsystem application: no console, UI, or child process.
-internal static class WorkLogSync
+internal static class Paulatim
 {
     private static readonly JavaScriptSerializer Json = new JavaScriptSerializer { MaxJsonLength = 33554432 };
     private static readonly UTF8Encoding Utf8 = new UTF8Encoding(false, true);

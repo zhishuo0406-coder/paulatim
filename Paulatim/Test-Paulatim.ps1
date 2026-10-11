@@ -1,5 +1,5 @@
 ﻿$ErrorActionPreference = 'Stop'
-$program = Join-Path $PSScriptRoot 'WorkLogSync.exe'
+$program = Join-Path $PSScriptRoot 'Paulatim.exe'
 $testRoot = Join-Path $PSScriptRoot ('test-runs\' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 New-Item -ItemType Directory -Path $testRoot -Force | Out-Null
 $utf8 = New-Object Text.UTF8Encoding($false)

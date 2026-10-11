@@ -1,10 +1,10 @@
-# Paulatim Shortcuts 输入升级方案（待确认）
+# Paulatim Shortcuts 输入升级方案（待调整，未批准）
 
-日期：2026-10-11（北京时间）。状态：仅完成源码检查、现有解析器隔离验证和方案设计。没有修改C#、配置、源CSV、邮件逻辑或现有任务，也没有操作iPhone。
+设计始于2026-10-11（北京时间）。状态：用户选择先调整方案，暂不修改数据处理代码。2026-10-12仅更新项目目录、类和程序命名；Category迁移未实现，没有修改配置、源CSV、邮件内容或现有任务，也没有操作iPhone。
 
 ## 已确认与尚未接收
 
-已检查 `WorkLogSync/WorkLogSync.cs` 的 `Row`、`Parse`、`IsHeader`、`Period`，以及 `WorkLogDispatch.cs` 的 `Snapshot`、`BuildMail`、周期与回执逻辑。已检查配置模板和虚构示例。
+已检查 `Paulatim/Paulatim.cs` 的 `Row`、`Parse`、`IsHeader`、`Period`，以及 `PaulatimDispatch.cs` 的 `Snapshot`、`BuildMail`、周期与回执逻辑。已检查配置模板和虚构示例。
 
 当前输入契约为 `timestamp,task,actual_minutes,effective_minutes`。Task已经存在，旧「事项」对应它；新增的是独立Category和更通用的手机输入流程。用户说明旧流程以IELTS为主，但没有收到实际 `.shortcut` 导出、编辑器步骤或真实CSV；没有验证手机现有变量和写文件动作的具体配置。下面是按代码契约设计的修改清单，而非声称已经检查过手机快捷指令。
 
@@ -45,7 +45,7 @@ timestamp,task,actual_minutes,effective_minutes,category
 5. 邮件增加Category列和分类小计，保留原总量、时间范围、完整原始快照及字节一致附件。正文说明可能有四/五列混合记录。保留现有主题、daily/weekly回执键和mail-state，不重新发送已确认的报告期。
 6. 不改源文件只读原则、镜像路径、计划任务名/触发器、08:00及登录补发策略。分类升级不声称解决现有三项独立审查发现。
 
-改动范围预计集中在 `WorkLogSync.cs` 的行结构、解析、首行识别及新增分组；`WorkLogDispatch.cs` 的分类显示与原始格式说明；现有测试和文档。不需要改同步配置或换云服务。
+改动范围预计集中在 `Paulatim.cs` 的行结构、解析、首行识别及新增分组；`PaulatimDispatch.cs` 的分类显示与原始格式说明；现有测试和文档。不需要改同步配置或换云服务。
 
 ## 安全切换顺序
 

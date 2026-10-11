@@ -4,7 +4,7 @@ Track actual and effective time on an iPhone, synchronize through iCloud, and re
 
 Paulatim began as an IELTS study log. Its next input upgrade will support IELTS, Projects, Academic, and Career while preserving existing records. **The current reader still accepts the original four-column CSV. Category support is being designed and is not implemented.**
 
-The repository is named [`worklog-sync`](https://github.com/zhishuo0406-coder/worklog-sync). Existing `WorkLogSync` directories, executable names, scheduled-task names, and email subjects remain unchanged for installation compatibility. Paulatim is the project name, not a change to the running installation.
+The repository and development folder are named **Paulatim**. The programs are `Paulatim.exe` and `PaulatimDispatch.exe`; new installations use the tasks `Paulatim-iCloud-to-D` and `PaulatimMail-Dispatch`. Existing installations are not automatically moved or reconfigured by a source rename. See the [rename and migration notes](docs/RENAME-2026-10-12.md).
 
 ## Status
 
@@ -26,14 +26,14 @@ The repository is named [`worklog-sync`](https://github.com/zhishuo0406-coder/wo
 flowchart LR
     S["iPhone Shortcuts"] --> I["iCloud Drive / Shortcuts / work_log.csv"]
     I --> W["Windows iCloud local file"]
-    W --> Y["WorkLogSync.exe: validate, mirror, summarize"]
-    Y --> D["WorkLogDispatch.exe: due periods, HTML, state"]
+    W --> Y["Paulatim.exe: validate, mirror, summarize"]
+    Y --> D["PaulatimDispatch.exe: due periods, HTML, state"]
     D --> C["Installed Codex CLI with ChatGPT login"]
     C --> G["Connected Gmail account"]
 ```
 
-- **Synchronization:** `WorkLogSync.cs` reads the source without modifying it, validates records, and writes `work_log.csv`, `report-data.json`, and `sync-status.json` beside its executable. A file lock, SHA-256 comparisons, atomic replacement, and a previous CSV mirror protect local updates. Invalid sources do not replace the last valid mirror.
-- **Reporting:** `WorkLogDispatch.cs` selects due periods, reruns synchronization, and checks hashes across the source, mirror, status, and raw snapshot. It builds HTML and a CSV attachment locally, then asks the Codex CLI to use the existing Gmail connection. A failed source refresh blocks sending the old mirror as a fresh snapshot.
+- **Synchronization:** `Paulatim.cs` reads the source without modifying it, validates records, and writes `work_log.csv`, `report-data.json`, and `sync-status.json` beside its executable. A file lock, SHA-256 comparisons, atomic replacement, and a previous CSV mirror protect local updates. Invalid sources do not replace the last valid mirror.
+- **Reporting:** `PaulatimDispatch.cs` selects due periods, reruns synchronization, and checks hashes across the source, mirror, status, and raw snapshot. It builds HTML and a CSV attachment locally, then asks the Codex CLI to use the existing Gmail connection. A failed source refresh blocks sending the old mirror as a fresh snapshot.
 - **Scheduling:** Windows Task Scheduler starts native Windows-subsystem executables directly without opening a terminal. Login and minute-level checks handle catch-up and retry. No due report means no model process. Tasks use the signed-in user's interactive session; they do not run before login.
 - **State:** Local receipt keys identify daily and weekly periods. Damaged receipt state is rejected rather than cleared automatically. The worker is instructed to search sent mail and read messages before confirming delivery, but the controller currently trusts its structured result rather than independently checking Gmail.
 
@@ -49,7 +49,7 @@ timestamp,task,actual_minutes,effective_minutes
 2030-01-01 10:00,Example task,45,40
 ```
 
-These examples are fictional. A header is optional: the first row of a headerless file is a record. Recognized headers use `timestamp` or `datetime` with the other names shown above, or the Chinese headers in the [existing guide](WorkLogSync/README.md).
+These examples are fictional. A header is optional: the first row of a headerless file is a record. Recognized headers use `timestamp` or `datetime` with the other names shown above, or the Chinese headers in the [existing guide](Paulatim/README.md).
 
 - Timestamps use `yyyy-MM-dd HH:mm`, `yyyy-MM-dd HH:mm:ss`, or the corresponding `T` separator formats. They are interpreted as Beijing local time and have no timezone offset.
 - `task` must contain text. CSV quoting supports commas, quotes, and embedded newlines.
@@ -85,15 +85,15 @@ Email additionally needs the installed Codex runtime, ChatGPT login, an authoriz
 Clone into a separate development folder rather than an active installation directory:
 
 ```powershell
-git clone https://github.com/zhishuo0406-coder/worklog-sync.git Paulatim
+git clone https://github.com/zhishuo0406-coder/paulatim.git Paulatim
 cd Paulatim
-powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\WorkLogSync\Build.ps1
-powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\WorkLogSync\Build-Mail.ps1
-powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\WorkLogSync\Test-WorkLogSync.ps1
-powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\WorkLogSync\Test-Mail.ps1 -Offline
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Paulatim\Build.ps1
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Paulatim\Build-Mail.ps1
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Paulatim\Test-Paulatim.ps1
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Paulatim\Test-Mail.ps1 -Offline
 ```
 
-These tests use synthetic data, without sending mail or registering tasks. Process-level execution policy does not change the persistent system policy. In Windows Codex, open the clone and read [HANDOFF.md](WorkLogSync/HANDOFF.md) and the [independent audit](docs/REVIEW-2026-10-11.md) before changing or deploying it.
+These tests use synthetic data, without sending mail or registering tasks. Process-level execution policy does not change the persistent system policy. In Windows Codex, open the clone and read [HANDOFF.md](Paulatim/HANDOFF.md) and the [independent audit](docs/REVIEW-2026-10-11.md) before changing or deploying it.
 
 Reproduce the independent audit from the clone root:
 
@@ -108,22 +108,24 @@ It builds into `_audit/` and uses synthetic fixtures only. **Its current expecte
 After building, replace both placeholders with the existing local iCloud CSV path and your own Gmail address:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\WorkLogSync\Configure.ps1 -SourceCsv 'C:\PATH\TO\work_log.csv' -Recipient 'REPLACE_WITH_YOUR_GMAIL_ADDRESS'
-.\WorkLogSync\WorkLogSync.exe
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Paulatim\Configure.ps1 -SourceCsv 'C:\PATH\TO\work_log.csv' -Recipient 'REPLACE_WITH_YOUR_GMAIL_ADDRESS'
+.\Paulatim\Paulatim.exe
 ```
 
-`Configure.ps1` creates local `config.json` and `mail-config.json`, refuses to overwrite existing configuration, and leaves email disabled. Inspect `sync-status.json` and `report-data.json` in `WorkLogSync/`. First-report dates control the earliest eligible daily date and weekly Saturday; the script derives them from the chosen first date.
+`Configure.ps1` creates local `config.json` and `mail-config.json`, refuses to overwrite existing configuration, and leaves email disabled. Inspect `sync-status.json` and `report-data.json` in `Paulatim/`. First-report dates control the earliest eligible daily date and weekly Saturday; the script derives them from the chosen first date.
 
-For an explicitly authorized end-to-end check, `WorkLogDispatch.exe --verification` sends a **real email with the full source CSV**, even while normal email is disabled. It is not an offline test. Review the known findings before enabling email or replacing a working installation.
+For an explicitly authorized end-to-end check, `PaulatimDispatch.exe --verification` sends a **real email with the full source CSV**, even while normal email is disabled. It is not an offline test. Review the known findings before enabling email or replacing a working installation.
 
 After authorized verification, enable email in the local configuration and run the installers from the clone root:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\WorkLogSync\Install-LocalSync.ps1
-powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\WorkLogSync\Install-Mail.ps1
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Paulatim\Install-LocalSync.ps1
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Paulatim\Install-Mail.ps1
 ```
 
 The mail installer starts its task immediately. Installing/updating tasks is deployment. Existing tasks are not silently replaced by default; do not use `-UpdateExisting` without inspecting ownership and preserving configuration, records, and receipts. The current sync installer can leave an old task disabled if its initial check fails; it is not a complete rollback mechanism.
+
+The renamed installers reject an installation while either legacy task exists, before changing any task. Migrating an existing installation requires a separate, reviewed operation that preserves its receipt state. The source rename retains `work_log.csv`, JSON filenames, and historical email subjects so existing data and mail history remain compatible; it does not add Category support.
 
 ### Local status and privacy
 
@@ -143,7 +145,7 @@ The independent review on **2026-10-11** rebuilt both programs and reran **54 or
 
 These remain unresolved. State, locks, and worker instructions reduce duplicate attempts but do not guarantee that mail is never missed or repeated. Static findings also concern retry timing, task/worker timeout mismatch, pending-request recovery, installer rollback, and outbox growth.
 
-Late-login and weekly catch-up used a simulated clock, not a shutdown across 08:00. The independent review did not send real mail or verify a live iPhone-to-iCloud update. Historical reports describe earlier runs and do not replace new-account validation. See the [audit](docs/REVIEW-2026-10-11.md), [independent results](docs/independent-results.json), and [original delivery report](WorkLogSync/TEST_REPORT.md).
+Late-login and weekly catch-up used a simulated clock, not a shutdown across 08:00. The independent review did not send real mail or verify a live iPhone-to-iCloud update. Historical reports describe earlier runs and do not replace new-account validation. See the [audit](docs/REVIEW-2026-10-11.md), [independent results](docs/independent-results.json), and [original delivery report](Paulatim/TEST_REPORT.md).
 
 ## Development roadmap
 
@@ -156,21 +158,21 @@ Late-login and weekly catch-up used a simulated clock, not a shutdown across 08:
 | P2 | Separate statistics/report logic from Windows adapters; evaluate macOS support | Planned; current implementation is Windows-only |
 | P2 | Codex path/version and proxy compatibility | Planned |
 
-[PRIORITIES.md](docs/PRIORITIES.md) contains existing reliability estimates, maintenance costs, and acceptance criteria; the input upgrade will need its own approved plan. [DEVELOPMENT_ROADMAP.md](WorkLogSync/DEVELOPMENT_ROADMAP.md) preserves earlier recommendations, some now historical: the public GitHub upload is complete. Documentation updates do not deploy runtime changes. Important decisions are recorded in [DECISIONS.md](docs/DECISIONS.md).
+[PRIORITIES.md](docs/PRIORITIES.md) contains existing reliability estimates, maintenance costs, and acceptance criteria; the input upgrade will need its own approved plan. [DEVELOPMENT_ROADMAP.md](Paulatim/DEVELOPMENT_ROADMAP.md) preserves earlier recommendations, some now historical: the public GitHub upload is complete. Documentation updates do not deploy runtime changes. Important decisions are recorded in [DECISIONS.md](docs/DECISIONS.md).
 
 ## Repository map
 
 | Path | Purpose |
 | --- | --- |
-| `WorkLogSync/WorkLogSync.cs` | Validation, mirror, statistics |
-| `WorkLogSync/WorkLogDispatch.cs` | Due periods, HTML/MIME, CLI worker, local state |
-| `WorkLogSync/Build*.ps1`, `WorkLogSync/Configure.ps1`, `WorkLogSync/Install*.ps1` | Build, configuration, deployment |
-| `WorkLogSync/Test*.ps1`, `tools/Review-Offline.ps1` | Regression tests and independent audit |
-| `WorkLogSync/*.example.json`, `WorkLogSync/mail-result-schema.json` | Templates and worker result contract |
-| `WorkLogSync/examples/`, `WorkLogSync/verification/` | Fictional input and historical sanitized results |
+| `Paulatim/Paulatim.cs` | Validation, mirror, statistics |
+| `Paulatim/PaulatimDispatch.cs` | Due periods, HTML/MIME, CLI worker, local state |
+| `Paulatim/Build*.ps1`, `Paulatim/Configure.ps1`, `Paulatim/Install*.ps1` | Build, configuration, deployment |
+| `Paulatim/Test*.ps1`, `tools/Review-Offline.ps1` | Regression tests and independent audit |
+| `Paulatim/*.example.json`, `Paulatim/mail-result-schema.json` | Templates and worker result contract |
+| `Paulatim/examples/`, `Paulatim/verification/` | Fictional input and historical sanitized results |
 | `docs/` | Audit, priorities, decisions, migration records |
 
-Git clones contain source, not binaries. `WorkLogSync/MANIFEST.sha256` describes the original delivery archive, including its binaries; it is provenance, not a checksum list for a newly built clone.
+Git clones contain source, not binaries. [ORIGINAL_DELIVERY_MANIFEST.sha256](docs/archive/ORIGINAL_DELIVERY_MANIFEST.sha256) preserves the original delivery archive's filenames and hashes; it is provenance, not a checksum list for a newly built clone. Historical audit and first-commit records retain the names used when those checks occurred.
 
 ## 中文补充
 

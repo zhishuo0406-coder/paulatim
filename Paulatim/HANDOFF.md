@@ -20,7 +20,7 @@
 
 ## 架构与接入
 
-WorkLogSync读来源，使用TextFieldParser校验CSV，计算完整行、日报及周报统计，原子更新本地文件。WorkLogDispatch先计算待发周期，再检查本机网络/代理、运行同步、核对散列，然后组装固定HTML/MIME请求，使用已安装Codex的ChatGPT登录调用已连接Gmail。邮件执行器只允许授权的本人发信，并返回结构化回执。设置的次数上限为3、执行超时10分钟，使用Windows Job Object清理子进程树。
+Paulatim读来源，使用TextFieldParser校验CSV，计算完整行、日报及周报统计，原子更新本地文件。PaulatimDispatch先计算待发周期，再检查本机网络/代理、运行同步、核对散列，然后组装固定HTML/MIME请求，使用已安装Codex的ChatGPT登录调用已连接Gmail。邮件执行器只允许授权的本人发信，并返回结构化回执。设置的次数上限为3、执行超时10分钟，使用Windows Job Object清理子进程树。
 
 没有自行保存密码或Token。登录凭据由Codex及Gmail连接管理。当前适配本机安装布局及简单host:port形式的系统代理；不是所有安装布局、复杂代理格式都验证过。按最新安装发现Codex路径的逻辑位于FindCodex。
 

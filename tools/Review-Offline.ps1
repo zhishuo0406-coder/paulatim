@@ -1,5 +1,5 @@
 ﻿param(
-    [string]$ProjectRoot = (Join-Path (Split-Path $PSScriptRoot -Parent) 'WorkLogSync'),
+    [string]$ProjectRoot = (Join-Path (Split-Path $PSScriptRoot -Parent) 'Paulatim'),
     [string]$OutputDirectory = (Join-Path (Split-Path $PSScriptRoot -Parent) '_audit\independent')
 )
 $ErrorActionPreference = 'Stop'
@@ -11,8 +11,8 @@ Add-Type -AssemblyName System.Web.Extensions
 $json = New-Object Web.Script.Serialization.JavaScriptSerializer
 $json.MaxJsonLength = 33554432
 $utf8 = New-Object Text.UTF8Encoding($false)
-$assembly = [Reflection.Assembly]::LoadFrom((Join-Path $OutputDirectory 'WorkLogDispatch.exe'))
-$dispatch = $assembly.GetType('WorkLogDispatch')
+$assembly = [Reflection.Assembly]::LoadFrom((Join-Path $OutputDirectory 'PaulatimDispatch.exe'))
+$dispatch = $assembly.GetType('PaulatimDispatch')
 $flags = [Reflection.BindingFlags]'Static,Public,NonPublic'
 $dispatch.GetField('Root',$flags).SetValue($null,($OutputDirectory+[IO.Path]::DirectorySeparatorChar))
 $configType=$dispatch.GetNestedType('Config')
@@ -49,7 +49,7 @@ $source=Join-Path $OutputDirectory 'synthetic-source.csv'
 [IO.File]::WriteAllText($source,$csv,$utf8)
 $syncConfig = @{source=$source;max_bytes=16777216} | ConvertTo-Json -Compress
 [IO.File]::WriteAllText((Join-Path $OutputDirectory 'config.json'),$syncConfig,$utf8)
-$start=New-Object Diagnostics.ProcessStartInfo((Join-Path $OutputDirectory 'WorkLogSync.exe'))
+$start=New-Object Diagnostics.ProcessStartInfo((Join-Path $OutputDirectory 'Paulatim.exe'))
 $start.UseShellExecute=$false
 $start.CreateNoWindow=$true
 $process=[Diagnostics.Process]::Start($start)

@@ -1,8 +1,13 @@
 ﻿param([switch]$UpdateExisting)
 $ErrorActionPreference = 'Stop'
+foreach ($legacyName in @('WorkLogSync-iCloud-to-D', 'WorkLogMail-Dispatch')) {
+    if (Get-ScheduledTask -TaskName $legacyName -ErrorAction SilentlyContinue) {
+        throw 'Legacy scheduled tasks exist. Use a reviewed migration preserving configuration and receipts; do not create a second installation.'
+    }
+}
 if ((Get-TimeZone).Id -ne 'China Standard Time') { throw 'This installation expects the verified Beijing Windows time zone.' }
-$taskName = 'WorkLogMail-Dispatch'
-$program = Join-Path $PSScriptRoot 'WorkLogDispatch.exe'
+$taskName = 'PaulatimMail-Dispatch'
+$program = Join-Path $PSScriptRoot 'PaulatimDispatch.exe'
 $configPath = Join-Path $PSScriptRoot 'mail-config.json'
 if (!(Test-Path -LiteralPath $program)) { throw 'Build the mail controller first.' }
 $config = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -17,5 +22,5 @@ $logon = New-ScheduledTaskTrigger -AtLogOn -User $user
 $retry = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 1)
 $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 12)
-Register-ScheduledTask -TaskName $taskName -Action $action -Trigger @($daily,$logon,$retry) -Principal $principal -Settings $settings -Description 'WorkLog mail v3: 08:00 daily, logon catch-up, cheap local retry checks; no console. Uses existing ChatGPT and Gmail sign-in only for due reports.' -Force:$UpdateExisting | Select-Object TaskName,State
+Register-ScheduledTask -TaskName $taskName -Action $action -Trigger @($daily,$logon,$retry) -Principal $principal -Settings $settings -Description 'Paulatim mail v3: 08:00 daily, logon catch-up, cheap local retry checks; no console. Uses existing ChatGPT and Gmail sign-in only for due reports.' -Force:$UpdateExisting | Select-Object TaskName,State
 Start-ScheduledTask -TaskName $taskName

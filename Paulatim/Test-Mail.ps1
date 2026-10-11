@@ -9,12 +9,12 @@ function Run-Hidden([string]$program, [string]$arguments) {
     if (!$process.WaitForExit(30000)) { $process.Kill(); throw 'Test process timed out.' }
     return $process.ExitCode
 }
-$exe = Join-Path $PSScriptRoot 'WorkLogDispatch.exe'
+$exe = Join-Path $PSScriptRoot 'PaulatimDispatch.exe'
 $testArgument = if ($Offline) { '--self-test-offline' } else { '--self-test' }
 if ((Run-Hidden $exe $testArgument) -ne 0) { throw 'Dispatch self-tests failed; see mail-tests.json.' }
 $fixture = Join-Path $PSScriptRoot ('mail-test-runs\' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
 New-Item -ItemType Directory -Path $fixture | Out-Null
-$fixtureExe = Join-Path $fixture 'WorkLogDispatch.exe'
+$fixtureExe = Join-Path $fixture 'PaulatimDispatch.exe'
 Copy-Item -LiteralPath $exe -Destination $fixtureExe
 $fixtureConfig = @{ enabled=$true; recipient='your-account@gmail.com'; first_daily_report='2099-01-01'; first_weekly_end='2099-01-03'; max_attempts_per_period=3; timeout_minutes=10 }
 [IO.File]::WriteAllText((Join-Path $fixture 'mail-config.json'), ($fixtureConfig | ConvertTo-Json), $utf8)

@@ -1,4 +1,6 @@
-# WorkLogSync — Windows工时同步与自动邮件
+# Paulatim — Windows工时同步与自动邮件
+
+2026-10-12命名更新：开发目录、源文件、构建输出和新任务名已统一为Paulatim；实际运行安装不会自动迁移。原始归档文件名与哈希保存在 `../docs/archive/ORIGINAL_DELIVERY_MANIFEST.sha256`。历史发信主题、CSV和状态文件名继续沿用，以兼容旧数据和回执。安装器在旧任务存在时拒绝建立第二套入口，迁移须单独审阅和授权。
 
 iPhone Shortcuts把工时CSV写入iCloud；Windows把已同步的文件校验并镜像到本地，生成统计，利用现有Codex的ChatGPT登录和Gmail连接发送日报、周报及晚开机补发。
 
@@ -22,14 +24,14 @@ iPhone Shortcuts把工时CSV写入iCloud；Windows把已同步的文件校验并
 
 ## 在Windows Codex中打开与验证
 
-1. 解压ZIP到一个新目录，例如 `D:\WorkLogSync-Delivery`。打开其中的 `WorkLogSync` 文件夹。不要覆盖当前正在运行的安装目录。
+1. 解压ZIP到一个新目录，例如 `D:\Paulatim-Delivery`。打开其中的 `Paulatim` 文件夹。不要覆盖当前正在运行的安装目录。
 2. 在Windows Codex中将这个文件夹添加/打开为项目，新建聊天，要求先阅读 `HANDOFF.md`、`README.md` 和 `DEVELOPMENT_ROADMAP.md`。
 3. 在该目录的PowerShell终端执行下面的构建及离线测试。全部使用合成测试数据，不发送邮件，不注册计划任务。
 
 ```powershell
 .\Build.ps1
 .\Build-Mail.ps1
-.\Test-WorkLogSync.ps1
+.\Test-Paulatim.ps1
 .\Test-Mail.ps1 -Offline
 ```
 
@@ -40,7 +42,7 @@ Windows PowerShell 5.1的默认脚本策略可能提示“禁止运行脚本”�
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Build.ps1
 powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Build-Mail.ps1
-powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Test-WorkLogSync.ps1
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Test-Paulatim.ps1
 powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Test-Mail.ps1 -Offline
 ```
 
@@ -55,12 +57,12 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Test-Mail.ps1 -O
 .\Configure.ps1 -SourceCsv 'C:\实际路径\work_log.csv' -Recipient '本人邮箱@gmail.com'
 .\Build.ps1
 .\Build-Mail.ps1
-.\WorkLogSync.exe
+.\Paulatim.exe
 ```
 
 检查 `sync-status.json` 的 `success` 和 `report-data.json` 中的数据完整性。邮箱现在是配置项，保存在本地 `mail-config.json`，不需要编辑源代码。`first_daily_report` 是允许发送的最早记录日期；`first_weekly_end` 是最早周报的周六日期，配置脚本按首次日期计算。
 
-真正启用前，连接本人Gmail并确认Codex采用ChatGPT账户登录。运行 `.\WorkLogDispatch.exe --verification` 会向配置邮箱发送一封真实验证邮件，含当前来源CSV；必须在本人已授权此操作时进行。随后读回验证正文和附件。测试完成后将 `mail-config.json` 的 `enabled` 改为 `true`，再安装任务：
+真正启用前，连接本人Gmail并确认Codex采用ChatGPT账户登录。运行 `.\PaulatimDispatch.exe --verification` 会向配置邮箱发送一封真实验证邮件，含当前来源CSV；必须在本人已授权此操作时进行。随后读回验证正文和附件。测试完成后将 `mail-config.json` 的 `enabled` 改为 `true`，再安装任务：
 
 ```powershell
 .\Install-LocalSync.ps1
@@ -73,7 +75,7 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Test-Mail.ps1 -O
 
 同步状态：`sync-status.json`。邮件状态：`mail-status.json`。`idle` 为没有到期报告，`waiting_network` / `waiting_source` 为自动等待，`waiting_retry` 为退避等待，`attention_required` / `failed` 为需要检查。发送过程证据在本机 `outbox`。不要删除 `mail-state.json` 来强行重试，否则可能丢失防重发历史。
 
-暂停邮件：禁用Windows任务 `WorkLogMail-Dispatch`，或把本地邮件配置的 `enabled` 改为 `false`。暂停同步：禁用 `WorkLogSync-iCloud-to-D`。正常同步和发送都不需要保持桌面窗口打开；依赖本机Codex运行时及有效登录。
+暂停邮件：禁用Windows任务 `PaulatimMail-Dispatch`，或把本地邮件配置的 `enabled` 改为 `false`。暂停同步：禁用 `Paulatim-iCloud-to-D`。正常同步和发送都不需要保持桌面窗口打开；依赖本机Codex运行时及有效登录。
 
 ## 在其他聊天读取
 
@@ -81,4 +83,4 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Test-Mail.ps1 -O
 
 ## 文件导航
 
-`WorkLogSync.cs`：数据同步、CSV校验和统计。`WorkLogDispatch.cs`：到期判断、报告组装及邮件控制。`Build*.ps1`：重建无控制台程序。`Install*.ps1`：安装本地任务。`Test*.ps1`：隔离测试。`*.example.json`：配置模板。`mail-result-schema.json`：邮件执行器结果契约。`verification/`：脱敏测试结果。`HANDOFF.md`：接手开发约束。`DEVELOPMENT_ROADMAP.md`：尚未完成的增强项。
+`Paulatim.cs`：数据同步、CSV校验和统计。`PaulatimDispatch.cs`：到期判断、报告组装及邮件控制。`Build*.ps1`：重建无控制台程序。`Install*.ps1`：安装本地任务。`Test*.ps1`：隔离测试。`*.example.json`：配置模板。`mail-result-schema.json`：邮件执行器结果契约。`verification/`：脱敏测试结果。`HANDOFF.md`：接手开发约束。`DEVELOPMENT_ROADMAP.md`：尚未完成的增强项。

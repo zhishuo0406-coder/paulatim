@@ -15,7 +15,7 @@ using System.Text.RegularExpressions;
 using System.Web.Script.Serialization;
 using Microsoft.Win32;
 
-internal static class WorkLogDispatch
+internal static class PaulatimDispatch
 {
     private static string Recipient = "your-account@gmail.com";
     private static readonly JavaScriptSerializer Json = new JavaScriptSerializer { MaxJsonLength = 33554432 };
@@ -173,7 +173,7 @@ internal static class WorkLogDispatch
     private static void SaveState(State state) { Write(Path.Combine(Root, "mail-state.json"), Json.Serialize(state)); }
 
     private static Dictionary<string, object> Snapshot() {
-        var sync = new ProcessStartInfo(Path.Combine(Root, "WorkLogSync.exe")) { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden };
+        var sync = new ProcessStartInfo(Path.Combine(Root, "Paulatim.exe")) { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden };
         using (var process = Process.Start(sync)) { if (!process.WaitForExit(60000)) { process.Kill(); throw new IOException("Local synchronization timed out."); } if (process.ExitCode != 0) throw new IOException("Source not ready; last good copy will not be mailed as current."); }
         var status = Json.Deserialize<Dictionary<string, object>>(File.ReadAllText(Path.Combine(Root, "sync-status.json"), Utf8));
         var snapshot = Json.Deserialize<Dictionary<string, object>>(File.ReadAllText(Path.Combine(Root, "report-data.json"), Utf8));

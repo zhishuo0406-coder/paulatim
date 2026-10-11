@@ -1,8 +1,13 @@
 ﻿param([switch]$UpdateExisting)
 $ErrorActionPreference = 'Stop'
-$taskName = 'WorkLogSync-iCloud-to-D'
-$program = Join-Path $PSScriptRoot 'WorkLogSync.exe'
-if (!(Test-Path -LiteralPath $program)) { throw 'Build WorkLogSync.exe first.' }
+foreach ($legacyName in @('WorkLogSync-iCloud-to-D', 'WorkLogMail-Dispatch')) {
+    if (Get-ScheduledTask -TaskName $legacyName -ErrorAction SilentlyContinue) {
+        throw 'Legacy scheduled tasks exist. Use a reviewed migration preserving configuration and receipts; do not create a second installation.'
+    }
+}
+$taskName = 'Paulatim-iCloud-to-D'
+$program = Join-Path $PSScriptRoot 'Paulatim.exe'
+if (!(Test-Path -LiteralPath $program)) { throw 'Build Paulatim.exe first.' }
 $existing = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 if ($existing -and !$UpdateExisting) { throw 'Task already exists; use -UpdateExisting after reviewing it.' }
 if ($existing) {
@@ -26,4 +31,4 @@ $repeat = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -Repetitio
 $logon = New-ScheduledTaskTrigger -AtLogOn -User ([Security.Principal.WindowsIdentity]::GetCurrent().Name)
 $principal = New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 2)
-Register-ScheduledTask -TaskName $taskName -Action $action -Trigger @($repeat, $logon) -Principal $principal -Settings $settings -Description 'WorkLogSync v2: native Windows subsystem application; no console or child process. Validated iCloud CSV mirror every minute while signed in.' -Force:$UpdateExisting | Select-Object TaskName,State
+Register-ScheduledTask -TaskName $taskName -Action $action -Trigger @($repeat, $logon) -Principal $principal -Settings $settings -Description 'Paulatim v2: native Windows subsystem application; no console or child process. Validated iCloud CSV mirror every minute while signed in.' -Force:$UpdateExisting | Select-Object TaskName,State

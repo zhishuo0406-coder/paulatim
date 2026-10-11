@@ -1,5 +1,7 @@
 # GitHub公开仓库迁移方案
 
+2026-10-12更新：仓库现名为 [paulatim](https://github.com/zhishuo0406-coder/paulatim)，保留同一仓库及历史；本地origin已更新。以下首次上传经过保留为历史记录，命名变化见 [更新报告](RENAME-2026-10-12.md)。
+
 ## 当前准备
 
 使用已有本地Git仓库接收项目。保留当前源代码、使用/交接/路线文档、历史测试报告及本轮审查结果。根和项目目录的.gitignore排除真实配置、凭据、CSV、状态、发送回执、outbox、日志、审查工作目录和生成exe；只允许明确虚构的示例CSV。原忽略规则会误排除verification/mail-tests.json，已增加精确例外。
@@ -26,4 +28,4 @@
 
 ## 已完成的发布
 
-2026-10-11用户完成Windows Git Credential Manager授权，要求通过本地Git上传。已核对认证账号为zhishuo0406-coder，创建Public仓库 https://github.com/zhishuo0406-coder/worklog-sync，通过git push推送main，并以git ls-remote核对初始提交7bf9d24e975224c491bb27b19bf4288cf7c6e08a。未再尝试插件或浏览器连接；发布记录作为后续文档提交保留，不修改运行代码。
+2026-10-11用户完成Windows Git Credential Manager授权，要求通过本地Git上传。已核对认证账号为zhishuo0406-coder，创建Public仓库 https://github.com/zhishuo0406-coder/paulatim，通过git push推送main，并以git ls-remote核对初始提交7bf9d24e975224c491bb27b19bf4288cf7c6e08a。未再尝试插件或浏览器连接；发布记录作为后续文档提交保留，不修改运行代码。

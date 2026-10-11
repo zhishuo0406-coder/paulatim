@@ -8,7 +8,7 @@ _audit/
 *.log
 *.log.*
 *.csv
-!WorkLogSync/examples/sample-work-log.csv
+!Paulatim/examples/sample-work-log.csv
 config.json
 mail-config.json
 sync-status.json
