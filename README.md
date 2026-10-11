@@ -59,6 +59,8 @@ These examples are fictional. A header is optional: the first row of a headerles
 
 **Do not append Category with the current reader.** Five-column or mixed four/five-column input fails validation and can delay reports. The input upgrade requires a compatible reader and validation before changing the iPhone shortcut.
 
+See the [proposed Shortcuts migration](docs/SHORTCUTS_MIGRATION.md) for compatibility rules, current-format probes, and the iPhone steps that require manual action. It is a proposal awaiting approval, not a deployed feature.
+
 ## Report schedule
 
 The controller uses Beijing time (`Asia/Shanghai`, UTC+08:00):
