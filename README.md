@@ -16,6 +16,7 @@ The repository and development folder are named **Paulatim**. The programs are `
 | 08:00 Beijing scheduling and catch-up after Windows login | Implemented; late-login logic tested with a simulated clock |
 | Independent QQ sender through native SMTP, without a model call | Implemented; Windows credential vault, STARTTLS, persistent delivery ledger; see [sender migration](docs/MAIL_SENDER_MIGRATION.md) |
 | This computer's formal daily/weekly QQ-to-Gmail route | Migrated on 2026-10-12; existing task triggers and receipts preserved; post-cutover controller idle |
+| Long-term data foundation | Separate development CLI implemented: permanent IDs, raw archives, DS1/DS2 migration, validated generations and rollback; not deployed |
 | Email through the installed Codex CLI and an existing Gmail connection | Legacy option; depends on account access, quota, network, and CLI compatibility |
 | Locks, receipt state, retry limits, timeout, child-process cleanup | Implemented with known reliability gaps; see validation below |
 | Category + Task input: IELTS / Projects / Academic / Career | Design in progress; no parser or iPhone shortcut upgrade deployed |
@@ -166,14 +167,14 @@ Late-login and weekly catch-up used a simulated clock, not a shutdown across 08:
 
 ## Development roadmap
 
-Long-term data compatibility is now a foundational requirement. The [data compatibility audit and proposal](docs/DATA_COMPATIBILITY_AUDIT.md) documents 12 reproduced current behaviors, permanent record identity, separate data/statistics versions, immutable raw archives and a staged migration/rollback protocol. This is an audited design awaiting confirmation, not an implemented storage upgrade. Existing four-column input and production data remain unchanged; earlier no-ID and inferred-IELTS suggestions are superseded.
+Long-term data compatibility is a foundational requirement. The [audit and design](docs/DATA_COMPATIBILITY_AUDIT.md) documents the original gaps. After design approval, the [first data foundation](docs/DATA_FOUNDATION.md) implements a separate development CLI with permanent IDs, original archives, distinct data/statistics versions, adjacent migrations and validated generation activation/rollback. Production integration and historical enrollment have not been performed. Existing four-column input and production data remain unchanged; earlier no-ID and inferred-IELTS suggestions are superseded.
 
 | Priority | Work | Status |
 | --- | --- | --- |
 | P0 | Trusted Gmail receipts for the legacy path; recipient reconciliation for ambiguous SMTP outcomes | Remaining; QQ durable intent and offline fault tests implemented |
 | P1 | Consistent legacy timeouts and backoff; bounded snapshot retention | Remaining; strict recipient/receipt-ID validation fixed |
 | P1 | Backward-compatible Category + Task input and a user-edited iPhone shortcut | Design in progress; approval required before processing changes |
-| P1 | Stable record IDs, versioned data migrations, original archives and generation validation | Audited proposal; must precede new input fields; no database introduced |
+| P1 | Stable record IDs, migrations, archives and generation validation | Development foundation implemented; production enrollment/integration pending; no database introduced |
 | P1 | Safe upgrade/rollback, health visibility, outbox retention, minimal Windows offline CI | Planned |
 | P2 | Separate statistics/report logic from Windows adapters; evaluate macOS support | Planned; current implementation is Windows-only |
 | P2 | Codex path/version and proxy compatibility | Planned |
@@ -188,6 +189,7 @@ Long-term data compatibility is now a foundational requirement. The [data compat
 | `Paulatim/PaulatimDispatch.cs`, `Paulatim/PaulatimSmtp.cs` | Due periods, HTML/MIME, SMTP ledger and credential adapter, legacy CLI worker |
 | `Paulatim/Build*.ps1`, `Paulatim/Configure*.ps1`, `Paulatim/Install*.ps1` | Build, private configuration, deployment |
 | `Paulatim/Test*.ps1`, `tools/Review-Offline.ps1` | Regression tests and independent audit |
+| `Paulatim/PaulatimData*.cs`, `Migrations/`, `Build-Data.ps1`, `tools/Test-Data.ps1` | Isolated data foundation, compatible export and fault/recovery verification |
 | `Paulatim/*.example.json`, `Paulatim/mail-result-schema.json` | Templates and worker result contract |
 | `Paulatim/examples/`, `Paulatim/verification/` | Fictional input and historical sanitized results |
 | `docs/` | Audit, priorities, decisions, migration records |

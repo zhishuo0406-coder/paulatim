@@ -3,6 +3,11 @@ _audit/
 *.zip
 *.exe
 *.pdb
+*.dll
+*.generated.cs
+# Private canonical storage and immutable source archives.
+data/
+paulatim-data/
 *.tmp
 *.lock
 *.log
