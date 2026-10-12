@@ -166,11 +166,14 @@ Late-login and weekly catch-up used a simulated clock, not a shutdown across 08:
 
 ## Development roadmap
 
+Long-term data compatibility is now a foundational requirement. The [data compatibility audit and proposal](docs/DATA_COMPATIBILITY_AUDIT.md) documents 12 reproduced current behaviors, permanent record identity, separate data/statistics versions, immutable raw archives and a staged migration/rollback protocol. This is an audited design awaiting confirmation, not an implemented storage upgrade. Existing four-column input and production data remain unchanged; earlier no-ID and inferred-IELTS suggestions are superseded.
+
 | Priority | Work | Status |
 | --- | --- | --- |
 | P0 | Trusted Gmail receipts for the legacy path; recipient reconciliation for ambiguous SMTP outcomes | Remaining; QQ durable intent and offline fault tests implemented |
 | P1 | Consistent legacy timeouts and backoff; bounded snapshot retention | Remaining; strict recipient/receipt-ID validation fixed |
 | P1 | Backward-compatible Category + Task input and a user-edited iPhone shortcut | Design in progress; approval required before processing changes |
+| P1 | Stable record IDs, versioned data migrations, original archives and generation validation | Audited proposal; must precede new input fields; no database introduced |
 | P1 | Safe upgrade/rollback, health visibility, outbox retention, minimal Windows offline CI | Planned |
 | P2 | Separate statistics/report logic from Windows adapters; evaluate macOS support | Planned; current implementation is Windows-only |
 | P2 | Codex path/version and proxy compatibility | Planned |

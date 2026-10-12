@@ -1,0 +1,62 @@
+﻿[
+    {
+        "name":  "legacy-roundtrip",
+        "reproduced":  true,
+        "finding":  "Four-column headerless CSV and exact source bytes are preserved."
+    },
+    {
+        "name":  "no-permanent-record-identity",
+        "reproduced":  true,
+        "finding":  "Output schema marker exists; permanent record ID and statistics version do not."
+    },
+    {
+        "name":  "header-shifts-record-number",
+        "reproduced":  true,
+        "finding":  "Adding a header changes the same record number from 1 to 2."
+    },
+    {
+        "name":  "reorder-shifts-record-number",
+        "reproduced":  true,
+        "finding":  "Reordering valid rows renumbers the same task."
+    },
+    {
+        "name":  "identical-records-retained",
+        "reproduced":  true,
+        "finding":  "Exact duplicate field arrays produce a warning; both records remain."
+    },
+    {
+        "name":  "equivalent-minutes-not-flagged",
+        "reproduced":  true,
+        "finding":  "Equivalent values 30/30.0 do not trigger the exact-fields duplicate warning."
+    },
+    {
+        "name":  "five-columns-rejected",
+        "reproduced":  true,
+        "finding":  "Schema extension is rejected and the previous valid mirror survives."
+    },
+    {
+        "name":  "previous-backup-overwritten",
+        "reproduced":  true,
+        "finding":  "The .previous file rotates; it is not an immutable original archive."
+    },
+    {
+        "name":  "valid-source-shortening-accepted",
+        "reproduced":  true,
+        "finding":  "A nonempty valid CSV can remove prior records without a deletion warning."
+    },
+    {
+        "name":  "legacy-time-precision-normalized",
+        "reproduced":  true,
+        "finding":  "Minute timestamps become :00 seconds; original text exists only in the raw snapshot."
+    },
+    {
+        "name":  "report-version-not-checked-by-builder",
+        "reproduced":  true,
+        "finding":  "BuildMail accepts a changed schema marker when old field names remain; this is a builder probe, not a live dispatch bypass."
+    },
+    {
+        "name":  "weekly-summary-has-separate-boundary-policy",
+        "reproduced":  true,
+        "finding":  "Sync weekly is a rolling seven-day window; formal weekly follows Sunday through Saturday."
+    }
+]
