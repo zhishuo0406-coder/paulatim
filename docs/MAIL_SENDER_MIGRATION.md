@@ -54,3 +54,16 @@ The last command intentionally exits 1 while the legacy receipt finding remains.
 5. Enable normal QQ mail only after verification and the reviewed cutover. Check runtime paths, credential availability under the task user, the next due period and status. Preserve a rollback copy, but never restore stale receipt state or reactivate two senders.
 
 This record does not claim production deployment. Remaining work includes controlled migration/rollback, recipient reconciliation tooling for ambiguous outcomes, legacy CLI trust and timeout issues, bounded private snapshot retention and health notifications. Category/Task processing changes remain unapproved; CSV parsing and iCloud input are unchanged.
+
+## Formal runtime cutover completed (2026-10-12)
+
+The user subsequently requested that formal daily and weekly reports also use QQ-to-Gmail. This authorized the runtime cutover, superseding the earlier not-deployed status above.
+
+- Added `Paulatim/Migrate-MailToQq.ps1`: require matching verified identities/source, an accepted verification-only SMTP ledger, an available vault credential, idle owned task, no pending legacy delivery and no second enabled mail task. Back up private configuration, executables and receipts; disable the existing task and hold its mail lease while switching. Do not copy the staged legacy receipt file over live receipts. Configuration/action rollback before activation never restores stale receipts.
+- Eight isolated migration checks passed: read-only preflight, successful cutover, pending legacy job, identity mismatch, second sender, uncertain SMTP ledger, task-update failure and active mail lock. Credential and scheduler adapters were mocked; file preservation and rollback used real synthetic files. Existing SMTP fault checks passed 18/18 and branding checks passed 5/5 again.
+- Live preflight passed. One cutover invocation correctly refused while the minute-level task was running; the task naturally returned idle before the successful retry. No active sender was killed.
+- The existing `WorkLogMail-Dispatch` task now runs `D:\WorkLogSync\PaulatimDispatch.exe`, with regular mail enabled and `transport=qq_smtp`. The runtime also contains the compatible `Paulatim.exe` and verified QQ configuration/SMTP ledger. The original sync task remains in service; no new mail task was created.
+- Post-cutover XML comparison confirmed unchanged triggers, principal and settings. The live legacy receipt file is byte-identical to its pre-cutover backup. The new controller completed with `idle`; the already-receipted 2026-10-11 daily report was not resent.
+- Daily delivery remains 08:00 Beijing for the previous day. With the unchanged first weekly end of 2026-10-17, the first eligible weekly report is due 2026-10-18 at 08:00, covering October 11–17. Login catch-up and retry triggers remain intact.
+
+This cutover sent no new verification or formal message because no period was due. It confirms the selected production transport and successful idle execution, not receipt of a future formal report. The earlier verification's Gmail readback remains the actual delivery evidence. No Category parser or production iCloud input change was made. Private backup and verification files stay outside Git.

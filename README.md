@@ -15,6 +15,7 @@ The repository and development folder are named **Paulatim**. The programs are `
 | Daily/weekly HTML reports with a complete CSV snapshot and attachment | Implemented |
 | 08:00 Beijing scheduling and catch-up after Windows login | Implemented; late-login logic tested with a simulated clock |
 | Independent QQ sender through native SMTP, without a model call | Implemented; Windows credential vault, STARTTLS, persistent delivery ledger; see [sender migration](docs/MAIL_SENDER_MIGRATION.md) |
+| This computer's formal daily/weekly QQ-to-Gmail route | Migrated on 2026-10-12; existing task triggers and receipts preserved; post-cutover controller idle |
 | Email through the installed Codex CLI and an existing Gmail connection | Legacy option; depends on account access, quota, network, and CLI compatibility |
 | Locks, receipt state, retry limits, timeout, child-process cleanup | Implemented with known reliability gaps; see validation below |
 | Category + Task input: IELTS / Projects / Academic / Career | Design in progress; no parser or iPhone shortcut upgrade deployed |
@@ -64,6 +65,8 @@ These examples are fictional. A header is optional: the first row of a headerles
 **Do not append Category with the current reader.** Five-column or mixed four/five-column input fails validation and can delay reports. The input upgrade requires a compatible reader and validation before changing the iPhone shortcut.
 
 See the [proposed Shortcuts migration](docs/SHORTCUTS_MIGRATION.md) for compatibility rules, current-format probes, and the iPhone steps that require manual action. It is a proposal awaiting approval, not a deployed feature.
+
+See [input improvements](docs/INPUT_IMPROVEMENTS.md) for current-format Task presets, numeric validation, backdated entry and CSV escaping, plus a separate future-field plan. The actual iPhone shortcut has not yet been inspected or edited.
 
 ## Report schedule
 
