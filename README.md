@@ -14,10 +14,12 @@ The repository and development folder are named **Paulatim**. The programs are `
 | Actual/effective minutes, task totals, daily totals, effective percentage | Implemented |
 | Daily/weekly HTML reports with a complete CSV snapshot and attachment | Implemented |
 | 08:00 Beijing scheduling and catch-up after Windows login | Implemented; late-login logic tested with a simulated clock |
-| Email through the installed Codex CLI and an existing Gmail connection | Implemented; depends on account access, quota, network, and CLI compatibility |
+| Independent QQ sender through native SMTP, without a model call | Implemented; Windows credential vault, STARTTLS, persistent delivery ledger; see [sender migration](docs/MAIL_SENDER_MIGRATION.md) |
+| Email through the installed Codex CLI and an existing Gmail connection | Legacy option; depends on account access, quota, network, and CLI compatibility |
 | Locks, receipt state, retry limits, timeout, child-process cleanup | Implemented with known reliability gaps; see validation below |
 | Category + Task input: IELTS / Projects / Academic / Career | Design in progress; no parser or iPhone shortcut upgrade deployed |
-| Independent server-confirmed receipts, stronger recovery, health reporting, Windows CI | Planned |
+| SMTP acceptance and crash-safe recovery | Implemented for QQ; acceptance does not prove inbox delivery, ambiguous outcomes require review |
+| Independent Gmail receipts for the legacy route, health reporting, Windows CI | Planned |
 | macOS support or delivery while the Windows computer is off | Planned; unavailable in the current implementation |
 
 ## Architecture
@@ -28,16 +30,18 @@ flowchart LR
     I --> W["Windows iCloud local file"]
     W --> Y["Paulatim.exe: validate, mirror, summarize"]
     Y --> D["PaulatimDispatch.exe: due periods, HTML, state"]
-    D --> C["Installed Codex CLI with ChatGPT login"]
+    D --> Q["QQ SMTP: STARTTLS + Windows credential vault"]
+    Q --> R["Approved recipient mailbox"]
+    D --> C["Legacy: installed Codex CLI with ChatGPT login"]
     C --> G["Connected Gmail account"]
 ```
 
 - **Synchronization:** `Paulatim.cs` reads the source without modifying it, validates records, and writes `work_log.csv`, `report-data.json`, and `sync-status.json` beside its executable. A file lock, SHA-256 comparisons, atomic replacement, and a previous CSV mirror protect local updates. Invalid sources do not replace the last valid mirror.
-- **Reporting:** `PaulatimDispatch.cs` selects due periods, reruns synchronization, and checks hashes across the source, mirror, status, and raw snapshot. It builds HTML and a CSV attachment locally, then asks the Codex CLI to use the existing Gmail connection. A failed source refresh blocks sending the old mirror as a fresh snapshot.
+- **Reporting:** `PaulatimDispatch.cs` selects due periods, reruns synchronization, and checks hashes across the source, mirror, status, and raw snapshot. It builds HTML and a CSV attachment locally. The explicitly selected transport sends through QQ SMTP or the legacy Codex/Gmail worker. A failed source refresh blocks sending the old mirror as a fresh snapshot. New subjects use Paulatim; confirmed WorkLog receipts remain valid.
 - **Scheduling:** Windows Task Scheduler starts native Windows-subsystem executables directly without opening a terminal. Login and minute-level checks handle catch-up and retry. No due report means no model process. Tasks use the signed-in user's interactive session; they do not run before login.
-- **State:** Local receipt keys identify daily and weekly periods. Damaged receipt state is rejected rather than cleared automatically. The worker is instructed to search sent mail and read messages before confirming delivery, but the controller currently trusts its structured result rather than independently checking Gmail.
+- **State:** Local receipt keys identify daily and weekly periods. Damaged state is rejected rather than cleared automatically. The QQ route durably records an intent before sending, freezes its original payload, and records SMTP acceptance afterward. An interrupted or ambiguous send blocks automatic resending. Its deterministic client Message-ID identifies local intent; QQ rewrote that header in the real verification, so recipient reconciliation must use observed IDs and inspect the report. It is not a server-side deduplication guarantee. The legacy worker's structured Gmail result is still trusted by its controller.
 
-There is no paid model API integration or API-key requirement. Email uses an existing ChatGPT login and Gmail connection; access and usage limits still apply. This version has no database, hosted backend, `.csproj`, or NuGet dependency.
+There is no paid model API integration or API-key requirement. QQ sending uses no model, Codex quota, or Gmail send permission. Reading reports from a ChatGPT chat still requires that chat's authorized mailbox capability. The legacy sender uses an existing ChatGPT login and Gmail connection. This version has no database, hosted backend, `.csproj`, or NuGet dependency.
 
 ## Current CSV contract
 
@@ -78,7 +82,7 @@ The body and attachment include the complete validated CSV history, including ro
 
 Use 64-bit Windows, Windows PowerShell 5.1 or PowerShell 7, and the .NET Framework compiler/libraries at `%SystemRoot%\Microsoft.NET\Framework64\v4.0.30319`. For real input, install iCloud for Windows and make the source CSV locally readable. Task installers expect the Windows timezone `China Standard Time`.
 
-Email additionally needs the installed Codex runtime, ChatGPT login, an authorized Gmail connection for the user's own mailbox, network access, and available quota. The code finds `codex.exe` under the current user's local `OpenAI\Codex\bin` directory; other layouts are not generally supported.
+QQ email needs an independent QQ mailbox with SMTP enabled, its client authorization code saved in the current Windows user's credential vault, and network access to `smtp.qq.com:587`. The legacy route additionally needs the installed Codex runtime, ChatGPT login, an authorized Gmail connection, and available quota. It finds `codex.exe` under the current user's local `OpenAI\Codex\bin` directory; other layouts are not generally supported.
 
 ### Clone, build, and check safely
 
@@ -91,6 +95,8 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Paulatim\Build.p
 powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Paulatim\Build-Mail.ps1
 powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Paulatim\Test-Paulatim.ps1
 powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Paulatim\Test-Mail.ps1 -Offline
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\tools\Test-MailBranding.ps1
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\tools\Test-SmtpOffline.ps1
 ```
 
 These tests use synthetic data, without sending mail or registering tasks. Process-level execution policy does not change the persistent system policy. In Windows Codex, open the clone and read [HANDOFF.md](Paulatim/HANDOFF.md) and the [independent audit](docs/REVIEW-2026-10-11.md) before changing or deploying it.
@@ -101,7 +107,7 @@ Reproduce the independent audit from the clone root:
 powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\tools\Review-Offline.ps1
 ```
 
-It builds into `_audit/` and uses synthetic fixtures only. **Its current expected exit code is 1:** three independent checks expose unresolved findings. It is not an all-green release gate.
+It builds into `_audit/` and uses synthetic fixtures only. **Its current expected exit code is 1:** one legacy Gmail receipt check still exposes an unresolved finding. It is not an all-green release gate.
 
 ### Configure a new installation
 
@@ -114,7 +120,15 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Paulatim\Configu
 
 `Configure.ps1` creates local `config.json` and `mail-config.json`, refuses to overwrite existing configuration, and leaves email disabled. Inspect `sync-status.json` and `report-data.json` in `Paulatim/`. First-report dates control the earliest eligible daily date and weekly Saturday; the script derives them from the chosen first date.
 
-For an explicitly authorized end-to-end check, `PaulatimDispatch.exe --verification` sends a **real email with the full source CSV**, even while normal email is disabled. It is not an offline test. Review the known findings before enabling email or replacing a working installation.
+For QQ, while regular mail remains disabled, open the native secure input dialog using Windows PowerShell 5.1:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Paulatim\Configure-Smtp.ps1 -Sender 'sender@qq.com' -Recipient 'REPLACE_WITH_YOUR_GMAIL_ADDRESS'
+```
+
+Replace the fictional sender and recipient. Enter the **QQ client authorization code** in the dialog, never in command arguments, chat, Git, or a config file. This selects `qq_smtp` and stores the code under a Paulatim Windows credential-vault entry. Normal mail remains disabled. `smtp-config.example.json` documents the non-secret fields; copy no real configuration into Git. Run setup under the same Windows user that will run the task.
+
+For an explicitly authorized end-to-end check, `PaulatimDispatch.exe --verification` sends a **real email with the full source CSV**, even while normal email is disabled. It is not an offline test. QQ verification uses its own key, preserving old receipts. Check the recipient mailbox, body, sender and exact CSV bytes before enabling email or replacing a working installation. `smtp_accepted` alone proves only SMTP acceptance.
 
 After authorized verification, enable email in the local configuration and run the installers from the clone root:
 
@@ -125,11 +139,11 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Paulatim\Install
 
 The mail installer starts its task immediately. Installing/updating tasks is deployment. Existing tasks are not silently replaced by default; do not use `-UpdateExisting` without inspecting ownership and preserving configuration, records, and receipts. The current sync installer can leave an old task disabled if its initial check fails; it is not a complete rollback mechanism.
 
-The renamed installers reject an installation while either legacy task exists, before changing any task. Migrating an existing installation requires a separate, reviewed operation that preserves its receipt state. The source rename retains `work_log.csv`, JSON filenames, and historical email subjects so existing data and mail history remain compatible; it does not add Category support.
+The renamed installers reject an installation while either legacy task exists, before changing any task. Migrating an existing installation requires a separate, reviewed operation that preserves receipt state and prevents two active mail senders. `work_log.csv`, JSON filenames and period keys remain compatible; confirmed historical WorkLog reports count as sent. A development build or successful staged verification does not change installed tasks or add Category support.
 
 ### Local status and privacy
 
-Inspect `sync-status.json` and `mail-status.json`. `idle`, `waiting_network`, `waiting_source`, and `waiting_retry` describe normal waits; `attention_required` and `failed` need inspection. Do not delete `mail-state.json` to force retries: that removes receipt history used to prevent repeats.
+Inspect `sync-status.json` and `mail-status.json`. `idle`, `waiting_network`, `waiting_source`, and `waiting_retry` describe normal waits; `attention_required` and `failed` need inspection. `smtp_accepted` means the SMTP server accepted the send, not that Gmail received it. Do not delete `mail-state.json` or `smtp-state.json` to force retries. An uncertain SMTP outcome requires recipient inspection and an explicitly reviewed recovery; it is never automatically switched to Gmail.
 
 Real configuration, credentials, CSV records, receipt state, outbox snapshots, logs, executables, and `_audit/` are excluded from Git. Only the explicitly fictional sample CSV is included. Outbox has no retention limit and contains full snapshots; keep it private. A public repository does not authorize publishing personal records.
 
@@ -143,7 +157,7 @@ The independent review on **2026-10-11** rebuilt both programs and reran **54 or
 2. Receipt-ID validation accepts a trailing newline.
 3. A syntactically valid synthetic message ID can be recorded as sent without independent server evidence.
 
-These remain unresolved. State, locks, and worker instructions reduce duplicate attempts but do not guarantee that mail is never missed or repeated. Static findings also concern retry timing, task/worker timeout mismatch, pending-request recovery, installer rollback, and outbox growth.
+On 2026-10-12 the recipient and receipt-ID newline cases were fixed: the independent suite now passes **10/11**, with the synthetic-ID finding remaining in the **legacy Gmail/CLI path**. The new QQ path uses actual SMTP responses and a separate durable ledger. Its **18/18 offline fault checks** and **5/5 branding checks** cover acceptance reuse, authentication refusal, ambiguous outcomes, crash intent, frozen snapshots, locks and partial success. See the [current sender report](docs/MAIL_SENDER_MIGRATION.md) for real verification status. No transport guarantees exactly-once inbox delivery. Legacy retry/timeout/recovery, installer rollback, and outbox growth still need work.
 
 Late-login and weekly catch-up used a simulated clock, not a shutdown across 08:00. The independent review did not send real mail or verify a live iPhone-to-iCloud update. Historical reports describe earlier runs and do not replace new-account validation. See the [audit](docs/REVIEW-2026-10-11.md), [independent results](docs/independent-results.json), and [original delivery report](Paulatim/TEST_REPORT.md).
 
@@ -151,8 +165,8 @@ Late-login and weekly catch-up used a simulated clock, not a shutdown across 08:
 
 | Priority | Work | Status |
 | --- | --- | --- |
-| P0 | Trusted mail receipts and offline fault tests for send/crash/partial-success recovery | Planned; highest reliability priority |
-| P1 | Strict field validation, consistent timeouts, durable retry requests and backoff | Planned |
+| P0 | Trusted Gmail receipts for the legacy path; recipient reconciliation for ambiguous SMTP outcomes | Remaining; QQ durable intent and offline fault tests implemented |
+| P1 | Consistent legacy timeouts and backoff; bounded snapshot retention | Remaining; strict recipient/receipt-ID validation fixed |
 | P1 | Backward-compatible Category + Task input and a user-edited iPhone shortcut | Design in progress; approval required before processing changes |
 | P1 | Safe upgrade/rollback, health visibility, outbox retention, minimal Windows offline CI | Planned |
 | P2 | Separate statistics/report logic from Windows adapters; evaluate macOS support | Planned; current implementation is Windows-only |
@@ -165,8 +179,8 @@ Late-login and weekly catch-up used a simulated clock, not a shutdown across 08:
 | Path | Purpose |
 | --- | --- |
 | `Paulatim/Paulatim.cs` | Validation, mirror, statistics |
-| `Paulatim/PaulatimDispatch.cs` | Due periods, HTML/MIME, CLI worker, local state |
-| `Paulatim/Build*.ps1`, `Paulatim/Configure.ps1`, `Paulatim/Install*.ps1` | Build, configuration, deployment |
+| `Paulatim/PaulatimDispatch.cs`, `Paulatim/PaulatimSmtp.cs` | Due periods, HTML/MIME, SMTP ledger and credential adapter, legacy CLI worker |
+| `Paulatim/Build*.ps1`, `Paulatim/Configure*.ps1`, `Paulatim/Install*.ps1` | Build, private configuration, deployment |
 | `Paulatim/Test*.ps1`, `tools/Review-Offline.ps1` | Regression tests and independent audit |
 | `Paulatim/*.example.json`, `Paulatim/mail-result-schema.json` | Templates and worker result contract |
 | `Paulatim/examples/`, `Paulatim/verification/` | Fictional input and historical sanitized results |
@@ -176,4 +190,4 @@ Git clones contain source, not binaries. [ORIGINAL_DELIVERY_MANIFEST.sha256](doc
 
 ## 中文补充
 
-Paulatim 通过 iPhone 记录、iCloud 同步、Windows 统计及邮件复盘形成流程。现有格式仍为「时间、事项、实际分钟、有效分钟」；Category 扩展尚未上线。先验证兼容解析，再调整 iPhone 快捷指令，保留旧数据、原路径和防重发状态。当前独立审查有三项待处理问题；本次 README 更新不部署程序、不修改任务、不发送邮件。
+Paulatim 通过 iPhone 记录、iCloud 同步、Windows 统计及邮件复盘形成流程。现有格式仍为「时间、事项、实际分钟、有效分钟」；Category 扩展尚未上线。新增独立 QQ 发件方案，授权码仅保存在 Windows 凭据库，发信不消耗模型额度。新邮件以 Paulatim 命名，保留旧回执。独立审查现为 10/11，剩余问题属于旧 Gmail/CLI 回执链路；真实验证与运行部署状态见发件迁移报告。

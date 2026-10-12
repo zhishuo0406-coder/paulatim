@@ -1,6 +1,9 @@
 # Local settings and private data
 config.json
 mail-config.json
+smtp-config.json
+smtp-state.json
+smtp-verified.json
 *.csv
 !examples/sample-work-log.csv
 work_log.csv.previous

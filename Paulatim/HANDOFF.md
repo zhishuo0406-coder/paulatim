@@ -37,3 +37,6 @@ Paulatim读来源，使用TextFieldParser校验CSV，计算完整行、日报及
 ## 继续开发的建议提示词
 
 “请先阅读HANDOFF、README、TEST_REPORT和DEVELOPMENT_ROADMAP。保持无窗口运行、源文件只读和邮件防重发。先构建并运行隔离测试；不要改动现有安装、连接权限或真实数据。汇报结果后，在我授权的范围内继续开发。”
+# Current independent-sender update (2026-10-12)
+
+Read [MAIL_SENDER_MIGRATION.md](../docs/MAIL_SENDER_MIGRATION.md) before working on mail. Native QQ SMTP and Paulatim subjects are implemented; a staged QQ-to-Gmail verification was received and its full HTML and original CSV bytes checked. Credentials are in the current Windows user's vault, never in this repository. Existing runtime/tasks have not been migrated. Preserve both receipt ledgers; never automatically retry an ambiguous SMTP outcome. QQ may rewrite the client Message-ID. The legacy CLI's synthetic-ID trust finding remains. The four-column CSV and unapproved Category proposal are unchanged.

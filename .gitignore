@@ -11,6 +11,9 @@ _audit/
 !Paulatim/examples/sample-work-log.csv
 config.json
 mail-config.json
+smtp-config.json
+smtp-state.json
+smtp-verified.json
 sync-status.json
 report-data.json
 mail-state.json

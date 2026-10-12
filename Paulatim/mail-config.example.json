@@ -1,5 +1,6 @@
 {
   "enabled": false,
+  "transport": "gmail_cli",
   "recipient": "your-account@gmail.com",
   "first_daily_report": "2030-01-01",
   "first_weekly_end": "2030-01-05",

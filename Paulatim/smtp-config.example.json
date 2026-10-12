@@ -1,0 +1,6 @@
+{
+  "enabled": false,
+  "sender": "your-sender@qq.com",
+  "recipient": "your-recipient@gmail.com",
+  "credential_target": "Paulatim/SMTP/QQ"
+}

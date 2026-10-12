@@ -1,10 +1,10 @@
 # Paulatim — Windows工时同步与自动邮件
 
-2026-10-12命名更新：开发目录、源文件、构建输出和新任务名已统一为Paulatim；实际运行安装不会自动迁移。原始归档文件名与哈希保存在 `../docs/archive/ORIGINAL_DELIVERY_MANIFEST.sha256`。历史发信主题、CSV和状态文件名继续沿用，以兼容旧数据和回执。安装器在旧任务存在时拒绝建立第二套入口，迁移须单独审阅和授权。
+2026-10-12更新：开发目录、源文件、构建输出和新任务名已统一为Paulatim；新发信主题也使用Paulatim，兼容旧WorkLog主题与回执。CSV及状态文件名保留。新增独立QQ发件与Windows凭据库支持，实际验证及部署状态见 `../docs/MAIL_SENDER_MIGRATION.md`。实际运行安装不会自动迁移。原始归档文件名与哈希保存在 `../docs/archive/ORIGINAL_DELIVERY_MANIFEST.sha256`。安装器在旧任务存在时拒绝建立第二套入口，迁移须单独审阅和授权。
 
-iPhone Shortcuts把工时CSV写入iCloud；Windows把已同步的文件校验并镜像到本地，生成统计，利用现有Codex的ChatGPT登录和Gmail连接发送日报、周报及晚开机补发。
+iPhone Shortcuts把工时CSV写入iCloud；Windows把已同步的文件校验并镜像到本地，生成统计，支持独立QQ SMTP发送日报、周报及晚开机补发。原Codex/Gmail路径作为旧选项保留。
 
-本包是可恢复、可继续开发的交付版。包含全部当前源代码、构建/配置/安装/检查脚本、干净的无窗口可执行程序、配置模板和脱敏测试报告。没有个人工时记录、真实邮箱、账号凭据、Token、运行日志或发送回执。示例CSV全部为虚构数据。旧PowerShell/VBS定时入口已经淘汰，不作为当前运行文件交付。
+仓库包含源码、构建/配置/安装/检查脚本、配置模板和脱敏测试报告；Git克隆不含exe，需本机构建。没有个人工时记录、真实邮箱、账号凭据、Token、运行日志或发送回执。示例CSV全部为虚构数据。旧PowerShell/VBS定时入口已经淘汰。
 
 ## 已实现
 
@@ -12,13 +12,13 @@ iPhone Shortcuts把工时CSV写入iCloud；Windows把已同步的文件校验并
 - 无窗口程序每分钟同步；排除并发写入，校验字段，原子替换，保留上一份有效副本；非法或缺失来源不覆盖有效数据。
 - 每天北京时间08:00发昨日日报，周日另发前七个完整自然日周报。
 - 错过08:00，在Windows开机登录后检查并补发；网络、代理、iCloud未就绪时自动等待后续检查。
-- 并发锁、独立发送回执、Gmail查询与读回确认、失败退避、尝试上限、执行超时和进程树清理。
+- 并发锁、失败退避、尝试上限、执行超时。QQ持久化发送意图及冻结快照，SMTP接受后记账，未知结果不盲目重试。旧Gmail路径要求执行器查询及读回，但控制器尚未独立核验其回执。
 - 完整CSV原始快照同时出现在正文和附件；重复或异常分钟记录保留并提示。
 - 连续多天离线，只补最近一期到期日报和周报；CSV保留完整历史。
 
 ## Windows环境
 
-需要64位Windows、Windows PowerShell 5.1或PowerShell 7、.NET Framework 4.x及其系统编译器。邮件还需要已安装Codex、以ChatGPT账户登录、Gmail插件已连接、联网、现有代理可用和现有使用额度。无需付费模型API；包内不包含任何登录凭据。
+需要64位Windows、Windows PowerShell 5.1或PowerShell 7、.NET Framework 4.x及其系统编译器。QQ发信需要开启SMTP、客户端授权码保存在任务用户的Windows凭据库，以及能访问smtp.qq.com:587；安全配置脚本使用Windows PowerShell 5.1。旧Gmail路径另需Codex、ChatGPT登录、Gmail连接、网络/代理和使用额度。无需付费模型API；QQ发送不调用模型。
 
 当前任务安装脚本要求Windows时区为China Standard Time。同步及统计固定使用北京时间。开机补发实际指用户登录后开始处理，不能在关机期间投递，也不能保证登录的瞬间收到邮件。
 
@@ -62,7 +62,9 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Test-Mail.ps1 -O
 
 检查 `sync-status.json` 的 `success` 和 `report-data.json` 中的数据完整性。邮箱现在是配置项，保存在本地 `mail-config.json`，不需要编辑源代码。`first_daily_report` 是允许发送的最早记录日期；`first_weekly_end` 是最早周报的周六日期，配置脚本按首次日期计算。
 
-真正启用前，连接本人Gmail并确认Codex采用ChatGPT账户登录。运行 `.\PaulatimDispatch.exe --verification` 会向配置邮箱发送一封真实验证邮件，含当前来源CSV；必须在本人已授权此操作时进行。随后读回验证正文和附件。测试完成后将 `mail-config.json` 的 `enabled` 改为 `true`，再安装任务：
+选用QQ时，保持普通邮件disabled，用Windows PowerShell 5.1运行 `Configure-Smtp.ps1 -Sender 'sender@qq.com' -Recipient 'recipient@gmail.com'`（替换虚构地址）。仅在本机安全输入框输入QQ客户端授权码，不在命令行或聊天输入。配置脚本保存凭据库引用，选择qq_smtp，不开启正式邮件。旧Gmail选项则需要连接Gmail并确认Codex采用ChatGPT账户登录。
+
+运行 `.\PaulatimDispatch.exe --verification` 会向配置邮箱发送真实邮件，含当前来源CSV；必须已有本人授权。随后在收件箱验证发件身份、正文及原始附件字节；`smtp_accepted`仅表示服务器接受，不表示实收。测试完成且部署获准后将 `mail-config.json` 的 `enabled` 改为 `true`，再安装任务：
 
 ```powershell
 .\Install-LocalSync.ps1
@@ -73,13 +75,13 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Test-Mail.ps1 -O
 
 ## 状态与暂停
 
-同步状态：`sync-status.json`。邮件状态：`mail-status.json`。`idle` 为没有到期报告，`waiting_network` / `waiting_source` 为自动等待，`waiting_retry` 为退避等待，`attention_required` / `failed` 为需要检查。发送过程证据在本机 `outbox`。不要删除 `mail-state.json` 来强行重试，否则可能丢失防重发历史。
+同步状态：`sync-status.json`。邮件状态：`mail-status.json`。`idle` 为没有到期报告，`waiting_network` / `waiting_source` 为自动等待，`waiting_retry` 为退避等待，`attention_required` / `failed` 为需要检查。QQ记录在 `smtp-state.json`；旧路径证据在本机 `outbox`。不要删除任一发送状态来强行重试。未知发送结果必须检查收件箱后审阅恢复。
 
-暂停邮件：禁用Windows任务 `PaulatimMail-Dispatch`，或把本地邮件配置的 `enabled` 改为 `false`。暂停同步：禁用 `Paulatim-iCloud-to-D`。正常同步和发送都不需要保持桌面窗口打开；依赖本机Codex运行时及有效登录。
+暂停邮件：禁用Windows任务 `PaulatimMail-Dispatch`，或把本地邮件配置的 `enabled` 改为 `false`。暂停同步：禁用 `Paulatim-iCloud-to-D`。正常同步和发送都不需要保持桌面窗口打开；QQ路径依赖任务用户的本机凭据库，旧路径依赖Codex登录。
 
 ## 在其他聊天读取
 
-在支持且已授权Gmail连接的ChatGPT聊天里请求：“查找最新WorkLog工时邮件，读取正文完整原始快照，第一行也是记录，说明快照时间后帮我复盘。”普通云端聊天不能直接读取Windows本地文件。不是所有GPT都有Gmail工具；邮箱数据截至最近一次报告快照。
+在支持且已授权Gmail连接的ChatGPT聊天里请求：“查找最新Paulatim工时邮件，兼查历史WorkLog邮件，读取正文完整原始快照，第一行也是记录，说明快照时间后帮我复盘。”普通云端聊天不能直接读取Windows本地文件。不是所有GPT都有Gmail工具；邮箱数据截至最近一次报告快照。
 
 ## 文件导航
 
