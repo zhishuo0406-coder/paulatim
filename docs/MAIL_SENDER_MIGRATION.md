@@ -67,3 +67,15 @@ The user subsequently requested that formal daily and weekly reports also use QQ
 - Daily delivery remains 08:00 Beijing for the previous day. With the unchanged first weekly end of 2026-10-17, the first eligible weekly report is due 2026-10-18 at 08:00, covering October 11–17. Login catch-up and retry triggers remain intact.
 
 This cutover sent no new verification or formal message because no period was due. It confirms the selected production transport and successful idle execution, not receipt of a future formal report. The earlier verification's Gmail readback remains the actual delivery evidence. No Category parser or production iCloud input change was made. Private backup and verification files stay outside Git.
+
+## First formal daily recovery and readback (2026-10-13)
+
+The user reported no received report. The formal daily period `2026-10-12` had no receipt; synchronization and task execution were healthy, but its SMTP ledger was `uncertain` after `SmtpException` with general status `-1`. Subsequent ticks did not resend that uncertain payload. The original exception chain was not persisted, so the exact cause/SMTP phase of that first failure cannot be established from the ledger.
+
+Gmail whole-mailbox searches found no matching formal daily, including a final check before recovery. A strict-TLS, AUTH-only diagnostic returned 235 without submitting mail. The user explicitly authorized exactly one controlled retry with the original frozen body/attachment, after being informed of the residual delayed-duplicate risk.
+
+Recovery held the existing mail lease, preserved private ledger/configuration backups, restored only that period to prepared, and used a single-use invocation marker. Two preparation-only script failures occurred before the sending API was called; their reserved-variable/type-conversion issues were corrected without repeating an external send. The one external send was then accepted, recorded under the original period identity, and all older receipts remained unchanged. No scheduled task, credential, source CSV or runtime binary was modified.
+
+Gmail INBOX contained one matching formal report received at **2026-10-13 10:24 Beijing**. Seven raw-MIME checks passed: sender, recipient, Paulatim display name, formal subject, exact frozen HTML, byte-identical 304-byte original CSV, and observed server Message-ID. Private evidence retains both client/server IDs and the Gmail ID. The controller returned idle with zero attempts and a confirmed daily receipt, suppressing another send for this period.
+
+This verifies the recovered formal delivery, not future availability. Remaining diagnostic work includes persisting safe exception/transport-stage details and surfacing attention-required status; SMTP acceptance alone still does not prove inbox delivery. No automatic uncertain-outcome retry was added.
