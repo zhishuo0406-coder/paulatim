@@ -78,6 +78,9 @@ internal static class PaulatimSmtp
         return mail;
     }
     public static string Deliver(string root, Mail requested, Action<Mail> send) {
+        return DeliverGuarded(root, requested, send, null);
+    }
+    public static string DeliverGuarded(string root, Mail requested, Action<Mail> send, Action<Mail> beforeAttempt) {
         ValidateMail(requested);
         string path = Path.Combine(root, "smtp-state.json");
         using (var lease = new FileStream(Path.Combine(root, "smtp.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None)) {
@@ -97,11 +100,13 @@ internal static class PaulatimSmtp
                 ValidateMail(record.frozen);
                 if (record.frozen.key != requested.key || record.frozen.message_id != record.message_id) throw new InvalidDataException("Frozen SMTP identity mismatch.");
             } else {
+                if (beforeAttempt != null) beforeAttempt(requested);
                 record = new Delivery { phase="prepared", message_id=requested.message_id, frozen=requested };
                 ledger.deliveries.Add(requested.key, record);
                 Save(path, ledger);
             }
             // Durable before entering external send. Crash/timeout cannot cause a blind retry.
+            if (beforeAttempt != null) beforeAttempt(record.frozen);
             record.phase = "attempting";
             Save(path, ledger);
             try { send(record.frozen); }

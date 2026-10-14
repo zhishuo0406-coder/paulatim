@@ -114,11 +114,31 @@ internal static class PaulatimDispatch
         DateTimeOffset next;
         if (!verification && state.next_attempt_at_utc != null && DateTimeOffset.TryParse(state.next_attempt_at_utc, out next) && now < next) { Status("waiting_retry", "Retry backoff is active.", due); return 0; }
         if (state.attempts >= config.max_attempts_per_period) { Status("attention_required", "Attempt limit reached; no repeated model launches.", due); return 1; }
-        if (!NetworkInterface.GetIsNetworkAvailable() || (!smtp && !ProxyReady())) { Status("waiting_network", "Required network is not yet available; retry on next local tick.", due); return 0; }
 
         Dictionary<string, object> snapshot;
         try { snapshot = Snapshot(); }
         catch (Exception error) { Status("waiting_source", error.Message, due); return 1; }
+        try {
+            string hash = Convert.ToString(snapshot["source_sha256"]);
+            if (!PaulatimFreshness.ObserveFile(Root, hash, DateTimeOffset.UtcNow)) {
+                Status("waiting_source", "Observe the same source for at least 120 seconds across local ticks (gap at most 90 seconds). No send attempted.", due); return 0;
+            }
+            var sourceConfig = Json.Deserialize<Dictionary<string, object>>(File.ReadAllText(Path.Combine(Root, "config.json"), Utf8));
+            // Keep exact local bytes immutable from final validation through external
+            // submission. iCloud may publish a newer version after this lease ends.
+            using (var source = new FileStream(Convert.ToString(sourceConfig["source"]), FileMode.Open, FileAccess.Read, FileShare.Read)) {
+                using (var memory = new MemoryStream()) {
+                    source.CopyTo(memory);
+                    if (Hash(memory.ToArray()) != hash) throw new InvalidDataException("Source changed after snapshot; hold report for a new observation window.");
+                }
+                foreach (var request in due) PaulatimFreshness.RequireReady(Root, hash, ReadyDate(request), DateTimeOffset.UtcNow);
+                return DispatchReady(config, state, due, snapshot, smtp, now);
+            }
+        } catch (Exception error) { Status("waiting_source", error.Message, due); return 1; }
+    }
+
+    private static int DispatchReady(Config config, State state, List<Request> due, Dictionary<string, object> snapshot, bool smtp, DateTimeOffset now) {
+        if (!NetworkInterface.GetIsNetworkAvailable() || (!smtp && !ProxyReady())) { Status("waiting_network", "Required network is not yet available; retry on next local tick.", due); return 0; }
         if (smtp) return DispatchSmtp(config, state, due, snapshot);
         string codex = FindCodex();
         if (!IsChatGptLogin(codex)) { Status("attention_required", "Codex is not signed in with ChatGPT; API-key sending is prohibited.", due); return 1; }
@@ -127,6 +147,7 @@ internal static class PaulatimDispatch
         var messages = due.Select(x => new { key = x.key, legacy_subject = x.legacy_subject, mail = BuildMail(x, snapshot) }).ToArray();
         string requestPath = Path.Combine(job, "request.json");
         Write(requestPath, Json.Serialize(new { approved_recipient = Recipient, requests = messages, source_sha256 = snapshot["source_sha256"] }));
+        foreach (var request in due) PaulatimFreshness.RequireReady(Root, Convert.ToString(snapshot["source_sha256"]), ReadyDate(request), DateTimeOffset.UtcNow);
         state.attempts++;
         state.pending_job = job;
         // Pending state is durable BEFORE external sending can occur.
@@ -192,7 +213,11 @@ internal static class PaulatimDispatch
                 var parts = ((IEnumerable)payload["parts"]).Cast<object>().Select(x => (Dictionary<string,object>)x).ToList();
                 string html = Convert.ToString(((Dictionary<string,object>)parts[0]["body"])["content"]);
                 var frozen = PaulatimSmtp.Freeze(request.key,sender,request.subject,html,Convert.ToString(snapshot["raw_csv_base64"]));
-                string id = PaulatimSmtp.Deliver(Root,frozen,mail => PaulatimSmtp.Send(mail,authorizationCode));
+                string id = PaulatimSmtp.DeliverGuarded(Root,frozen,mail => PaulatimSmtp.Send(mail,authorizationCode), mail => {
+                    string frozenHash = Hash(Convert.FromBase64String(mail.csv_base64));
+                    if (frozenHash != Convert.ToString(snapshot["source_sha256"])) throw new InvalidDataException("Previously attempted frozen report uses an older source. Hold for reviewed recovery; do not replace or send it.");
+                    PaulatimFreshness.RequireReady(Root, frozenHash, ReadyDate(request), DateTimeOffset.UtcNow);
+                });
                 state.receipts[request.key] = "smtp:" + id;
                 SaveState(state); // Persist each period before attempting another report.
             }
@@ -224,6 +249,12 @@ internal static class PaulatimDispatch
         return snapshot;
     }
 
+    // A verification previews today's partial records, but still requires the
+    // owner to confirm all closed days. Formal reports always require their end.
+    private static string ReadyDate(Request request) {
+        return request.kind == "verification" ? Date(Day(request.end_date).AddDays(-1)) : request.end_date;
+    }
+
     private static object BuildMail(Request request, Dictionary<string, object> snapshot) {
         var allRows = ((IEnumerable)snapshot["rows"]).Cast<object>().Select(x => (Dictionary<string, object>)x).ToList();
         DateTime start = Day(request.start_date), end = Day(request.end_date).AddDays(1);
@@ -248,6 +279,7 @@ internal static class PaulatimDispatch
         html.Append("<p>各事项合计：</p><ul>");
         foreach (var group in rows.GroupBy(x => Convert.ToString(x["task"]))) html.Append("<li>" + E(group.Key) + "：实际" + group.Sum(x => Convert.ToDecimal(x["actual_minutes"])) + "分钟，有效" + group.Sum(x => Convert.ToDecimal(x["effective_minutes"])) + "分钟。</li>");
         html.Append("</ul><p>数据快照：" + E(snapshot["snapshot_at_utc"]) + "；源文件修改时间：" + E(snapshot["source_modified_at_utc"]) + "。</p>");
+        html.Append("<p>发送门禁：本地来源稳定观察至少120秒，且完整来源已由所有者按文件散列和报告周期显式确认。此确认不代表系统能自动证明iCloud云端没有尚未到达的更新。</p>");
         var warnings = ((IEnumerable)snapshot["warnings"]).Cast<object>().ToList();
         if (warnings.Count > 0) { html.Append("<p>数据警告（原始记录保留）：</p><ul>"); foreach (var warning in warnings) html.Append("<li>" + E(warning) + "</li>"); html.Append("</ul>"); }
         html.Append("<p>完整工时原始快照（无表头时第一行也是记录；列为时间、事项、实际分钟、有效分钟）：</p><pre>" + E(snapshot["raw_csv"]) + "</pre>");

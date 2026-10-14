@@ -1,0 +1,500 @@
+{
+  "issue": "PAU-001",
+  "checked_at_beijing": "2026-10-14T09:22:24.6112728+08:00",
+  "scope": "Synthetic offline fixtures; no real send, deployment or phone/iCloud acceptance",
+  "total": 104,
+  "passed": 104,
+  "source_sha256": {
+    "Paulatim/PaulatimDispatch.cs": "eee9097a33037539a8997d3c7a05ecaa91de6d85c62de1ee66e2523c89ae4e7a",
+    "Paulatim/PaulatimFreshness.cs": "2875992f39088d13f839909b19968d0ddd918a7db6f54a9d8b4ef2dd55e2d048",
+    "tools/Test-FreshnessOffline.ps1": "f09cd73a625613e92e39bff00b5cd37cf8f994018c845c7969408c6cde2c0db1",
+    "tools/PaulatimFreshnessTests.cs": "08745fb4d5771c38b7fcdc035155442bcea04a7236cdc87c07427009c1beb037",
+    "Paulatim/PaulatimSmtp.cs": "04a573c73e580e2b126545765932431aa04ad4d5699f411113ecb44d92820b07",
+    "Paulatim/Confirm-SourceReady.ps1": "1f407206455e80d683d13ca023c570221e4c34cdb040ef2645baf4fb6887a6bb"
+  },
+  "freshness_unit": [
+    {
+      "name": "24-second-late-row-restarts-window",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "stable-old-file-without-confirmation-never-ready",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "continuous-changing-source-never-stable",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "offline-gap-and-clock-reversal-reset-window",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "valid-complete-closed-period-ready",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "unchanged-no-work-day-can-be-explicitly-confirmed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "prior-period-confirmation-does-not-authorize-new-day",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "unclosed-and-future-confirmations-rejected",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "schema-date-and-hash-corruption-rejected",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "weekly-coverage-checked-independently",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "corrupt-observation-restarts-safely",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "missing-and-corrupt-ready-file-block",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "source-read-lease-prevents-replacement-and-write",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "blocked-source-creates-no-send-intent",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "ready-current-source-sends-once",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "older-prepared-payload-preserved-and-not-sent",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "uncertain-outcome-still-blocks-even-with-new-readiness",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "freshness_process": [
+    {
+      "name": "qq_smtp-first-tick-holds-no-send-or-attempt",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "qq_smtp-stable-old-source-missing-confirmation-still-blocks",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "qq_smtp-late-new-row-invalidates-prior-confirmation",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "gmail_cli-first-tick-holds-no-send-or-attempt",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "gmail_cli-stable-old-source-missing-confirmation-still-blocks",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "gmail_cli-late-new-row-invalidates-prior-confirmation",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "confirmation-requires-explicit-owner-assertion",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "confirmation-rejects-reviewed-hash-mismatch",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "confirmation-rejects-unclosed-day",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "confirmation-writes-only-reviewed-source-readiness",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "sync": [
+    {
+      "test": "windows-subsystem-no-console",
+      "passed": true
+    },
+    {
+      "test": "first-row-and-daily-totals",
+      "passed": true
+    },
+    {
+      "test": "unchanged-no-rewrite",
+      "passed": true
+    },
+    {
+      "test": "update-and-previous-copy",
+      "passed": true
+    },
+    {
+      "test": "reject-and-preserve-negative",
+      "passed": true
+    },
+    {
+      "test": "reject-and-preserve-bad_number",
+      "passed": true
+    },
+    {
+      "test": "reject-and-preserve-empty",
+      "passed": true
+    },
+    {
+      "test": "reject-and-preserve-unclosed_quote",
+      "passed": true
+    },
+    {
+      "test": "reject-and-preserve-wrong_columns",
+      "passed": true
+    },
+    {
+      "test": "reject-and-preserve-bad_date",
+      "passed": true
+    },
+    {
+      "test": "quotes-commas-newlines-decimals",
+      "passed": true
+    },
+    {
+      "test": "header-bom-and-zero-denominator",
+      "passed": true
+    },
+    {
+      "test": "duplicate-and-overrun-warnings",
+      "passed": true
+    },
+    {
+      "test": "missing-source-preserves-copy",
+      "passed": true
+    },
+    {
+      "test": "writer-lock-and-recovery",
+      "passed": true
+    },
+    {
+      "test": "concurrent-instance-and-recovery",
+      "passed": true
+    },
+    {
+      "test": "invalid-utf8-rejected",
+      "passed": true
+    },
+    {
+      "test": "size-limit-enforced",
+      "passed": true
+    },
+    {
+      "test": "source-destination-collision",
+      "passed": true
+    },
+    {
+      "test": "weekly-boundary-and-empty-daily",
+      "passed": true
+    },
+    {
+      "test": "corrupt-status-recovers-on-failure",
+      "passed": true
+    },
+    {
+      "test": "source-never-modified",
+      "passed": true
+    }
+  ],
+  "mail": [
+    {
+      "test": "before-inception-no-retroactive-mail",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "0759-does-not-send-today-report",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "0800-daily-due",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "0830-late-boot-daily-due",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "late-night-catchup",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "midnight-preserves-last-due-period",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "next-day-before-eight-catches-last-due",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "next-day-eight-advances",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "acknowledged-daily-not-resent",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "sunday-daily-and-weekly",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "monday-recovers-missed-weekly",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "sunday-before-eight-last-week-only",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "week-does-not-advance-until-sunday-eight",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "week-advances-sunday-eight",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "partial-success-only-retries-weekly",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "utc-clock-converts-to-beijing",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "verified-receipt-recorded",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "already-sent-receipt-recorded",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "uncertain-not-marked-sent",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "failed-not-marked-sent",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "unknown-receipt-rejected",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "invented-id-rejected",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "duplicate-receipt-key-rejected",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "malformed-result-never-mutates-receipts",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "unknown-status-rejected",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "configured-recipient-accepted",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "recipient-control-characters-rejected",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "test": "child-tree-terminated-on-job-disposal",
+      "passed": true,
+      "error": ""
+    }
+  ],
+  "smtp": [
+    {
+      "name": "valid-independent-qq-config",
+      "passed": true
+    },
+    {
+      "name": "control-characters-in-address-rejected",
+      "passed": true
+    },
+    {
+      "name": "recipient-mismatch-rejected-before-send",
+      "passed": true
+    },
+    {
+      "name": "non-qq-sender-rejected",
+      "passed": true
+    },
+    {
+      "name": "same-sender-and-recipient-rejected",
+      "passed": true
+    },
+    {
+      "name": "message-id-stable-for-same-period",
+      "passed": true
+    },
+    {
+      "name": "message-id-distinct-for-different-period",
+      "passed": true
+    },
+    {
+      "name": "bad-subject-rejected-before-intent",
+      "passed": true
+    },
+    {
+      "name": "invalid-attachment-rejected-before-intent",
+      "passed": true
+    },
+    {
+      "name": "accepted-delivery-not-repeated",
+      "passed": true
+    },
+    {
+      "name": "uncertain-send-blocks-blind-retry",
+      "passed": true
+    },
+    {
+      "name": "authentication-refusal-recorded-before-safe-retry",
+      "passed": true
+    },
+    {
+      "name": "crash-after-intent-blocks-send",
+      "passed": true
+    },
+    {
+      "name": "prepared-retry-uses-frozen-snapshot",
+      "passed": true
+    },
+    {
+      "name": "corrupt-ledger-preserved-no-send",
+      "passed": true
+    },
+    {
+      "name": "unknown-phase-rejected-no-send",
+      "passed": true
+    },
+    {
+      "name": "concurrent-ledger-owner-blocks-send",
+      "passed": true
+    },
+    {
+      "name": "partial-success-does-not-repeat-first-period",
+      "passed": true
+    }
+  ],
+  "branding": [
+    {
+      "name": "daily-new-subject-with-legacy-alias-and-stable-key",
+      "passed": true
+    },
+    {
+      "name": "weekly-new-subject-with-legacy-alias-and-stable-period",
+      "passed": true
+    },
+    {
+      "name": "existing-receipt-suppresses-daily-after-rename",
+      "passed": true
+    },
+    {
+      "name": "outgoing-mail-uses-only-new-subject",
+      "passed": true
+    },
+    {
+      "name": "csv-attachment-remains-byte-identical",
+      "passed": true
+    }
+  ],
+  "mail_process": [
+    {
+      "name": "no-due-no-model",
+      "passed": true
+    },
+    {
+      "name": "concurrent-skipped",
+      "passed": true
+    },
+    {
+      "name": "corrupt-receipts-preserved",
+      "passed": true
+    },
+    {
+      "name": "windows-subsystem",
+      "passed": true
+    }
+  ]
+}

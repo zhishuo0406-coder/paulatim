@@ -20,6 +20,8 @@ smtp-config.json
 smtp-state.json
 smtp-verified.json
 sync-status.json
+source-ready.json
+source-observation.json
 report-data.json
 mail-state.json
 mail-status.json
