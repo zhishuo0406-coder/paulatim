@@ -18,7 +18,6 @@ $taskName = 'WorkLogMail-Dispatch'
 $task = Get-ScheduledTask -TaskName $taskName
 if ($task.Actions.Count -ne 1 -or $task.Actions[0].Execute -ine $target -or $task.Actions[0].WorkingDirectory -ine $root -or $task.Actions[0].Arguments -or [string]$task.State -ne 'Ready') { throw 'Expected enabled, idle mail task owned by this installation.' }
 $xmlBefore = Export-ScheduledTask -TaskName $taskName
-if (Test-Path -LiteralPath (Join-Path $root 'source-ready.json')) { throw 'Existing readiness assertion requires review before this first strict deployment.' }
 $lease = New-Object IO.FileStream((Join-Path $root 'mail.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
 $smtpLease = $null
 try {
@@ -38,31 +37,31 @@ try {
     if (!$config.enabled -or $config.transport -ne 'qq_smtp' -or $state.pending_job) { throw 'Expected enabled QQ configuration without a pending legacy job.' }
     $due = $dispatch.GetMethod('Due',$flags).Invoke($null,@($config,$state,[DateTimeOffset]::UtcNow))
     if ($due.Count) { throw 'Newly due reports exist; use a separate reviewed held-report cutover.' }
-    # Verify the deployed code's gate refuses missing readiness without invoking
-    # a sender or inventing a phone completeness assertion.
+    # Verify source time, rather than regenerated snapshot time, controls sending.
     $blocked = $false
-    try { $freshness.GetMethod('RequireReady',$flags).Invoke($null,@($root,('0'*64),[DateTimeOffset]::UtcNow.ToOffset([TimeSpan]::FromHours(8)).Date.AddDays(-1).ToString('yyyy-MM-dd'),[DateTimeOffset]::UtcNow)) }
+    $gateNow = [DateTimeOffset]::UtcNow
+    try { $freshness.GetMethod('ValidateTimes',$flags).Invoke($null,@('2000-01-01T00:00:00Z',$gateNow.ToString('o'),$gateNow)) }
     catch { if ($_.Exception.InnerException -is [IO.InvalidDataException]) { $blocked=$true } else { throw } }
-    if (!$blocked) { throw 'Missing source confirmation did not block the candidate.' }
+    if (!$blocked) { throw 'Old source with a freshly generated snapshot did not block the candidate.' }
+    $freshness.GetMethod('ValidateTimes',$flags).Invoke($null,@($gateNow.AddSeconds(-1).ToString('o'),$gateNow.ToString('o'),$gateNow))
     if ($ValidateOnly) { 'Strict readiness deployment preflight passed; no runtime files or tasks changed.'; return }
     $backup = Join-Path $root ('backup-freshness-' + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss') + '-' + [Guid]::NewGuid().ToString('N').Substring(0,8))
     New-Item -ItemType Directory -Path $backup | Out-Null
     Copy-Item -LiteralPath $target -Destination $backup
     foreach ($name in $protected) { Copy-Item -LiteralPath (Join-Path $root $name) -Destination $backup }
     [IO.File]::WriteAllText((Join-Path $backup 'mail-task.xml'),$xmlBefore)
-    $confirmation = Join-Path $root 'Confirm-SourceReady.ps1'
-    $hadConfirmation = Test-Path -LiteralPath $confirmation
-    if ($hadConfirmation) { Copy-Item -LiteralPath $confirmation -Destination $backup }
+    $obsoleteScript = Join-Path $root 'Confirm-SourceReady.ps1'
+    $hadObsoleteScript = Test-Path -LiteralPath $obsoleteScript
+    if ($hadObsoleteScript) { Copy-Item -LiteralPath $obsoleteScript -Destination $backup }
     try {
         Copy-Item -LiteralPath $candidate -Destination $target -Force
-        Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Confirm-SourceReady.ps1') -Destination $confirmation -Force
+        if ($hadObsoleteScript) { Remove-Item -LiteralPath $obsoleteScript }
         if ((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant() -cne $ExpectedSha256) { throw 'Installed build verification failed.' }
         foreach ($name in $protected) { if ((Get-FileHash -LiteralPath (Join-Path $root $name) -Algorithm SHA256).Hash -cne $before[$name]) { throw ('Protected file changed: '+$name) } }
         if ((Export-ScheduledTask -TaskName $taskName) -cne $xmlBefore) { throw 'Task definition changed during deployment.' }
     } catch {
         Copy-Item -LiteralPath (Join-Path $backup 'PaulatimDispatch.exe') -Destination $target -Force
-        if ($hadConfirmation) { Copy-Item -LiteralPath (Join-Path $backup 'Confirm-SourceReady.ps1') -Destination $confirmation -Force }
-        elseif (Test-Path -LiteralPath $confirmation) { Remove-Item -LiteralPath $confirmation }
+        if ($hadObsoleteScript) { Copy-Item -LiteralPath (Join-Path $backup 'Confirm-SourceReady.ps1') -Destination $obsoleteScript -Force }
         # Never restore stale receipt ledgers as part of binary rollback.
         throw
     }

@@ -1,75 +1,76 @@
 {
   "issue": "PAU-001",
-  "checked_at_beijing": "2026-10-14T09:22:24.6112728+08:00",
-  "scope": "Synthetic offline fixtures; no real send, deployment or phone/iCloud acceptance",
-  "total": 104,
-  "passed": 104,
+  "checked_at_beijing": "2026-10-14T10:05:54.4616107+08:00",
+  "scope": "Synthetic offline fixtures; no actual mail or phone-cloud completeness test",
+  "rule": "iCloud source modification time strictly after current Beijing day 00:00:00",
+  "total": 105,
+  "passed": 105,
   "source_sha256": {
-    "Paulatim/PaulatimDispatch.cs": "eee9097a33037539a8997d3c7a05ecaa91de6d85c62de1ee66e2523c89ae4e7a",
-    "Paulatim/PaulatimFreshness.cs": "2875992f39088d13f839909b19968d0ddd918a7db6f54a9d8b4ef2dd55e2d048",
-    "tools/Test-FreshnessOffline.ps1": "f09cd73a625613e92e39bff00b5cd37cf8f994018c845c7969408c6cde2c0db1",
-    "tools/PaulatimFreshnessTests.cs": "08745fb4d5771c38b7fcdc035155442bcea04a7236cdc87c07427009c1beb037",
-    "Paulatim/PaulatimSmtp.cs": "04a573c73e580e2b126545765932431aa04ad4d5699f411113ecb44d92820b07",
-    "Paulatim/Confirm-SourceReady.ps1": "1f407206455e80d683d13ca023c570221e4c34cdb040ef2645baf4fb6887a6bb"
+    "Paulatim/Deploy-Freshness.ps1": "5b1aa16ea9aeb6fcd40f8319cbfc109aeb71c5683a8fa15464c6f9a89268f548",
+    "tools/Test-FreshnessOffline.ps1": "7a1fb6917419735932f5e3fb3481d1cad3c286d0f7a56e4117e50d45710b15ae",
+    "Paulatim/PaulatimFreshness.cs": "41a781dae1ab2e8d8955a2101764c65c3f46b5f46bcbb566338abaaf8466f64d",
+    "tools/PaulatimFreshnessTests.cs": "9e3e9e301fb2465ab872a29155ed450932bfd6fdbcc398c4e9f106cb5f435711",
+    "Paulatim/PaulatimDispatch.cs": "701dd7bbceec312016fe0cb1142bc2cf04b7ffa74a15bd7dc25d2acc99cd6a00",
+    "Paulatim/PaulatimSmtp.cs": "04a573c73e580e2b126545765932431aa04ad4d5699f411113ecb44d92820b07"
   },
   "freshness_unit": [
     {
-      "name": "24-second-late-row-restarts-window",
+      "name": "before-midnight-source-blocked-even-with-new-snapshot",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "stable-old-file-without-confirmation-never-ready",
+      "name": "exact-000000-source-rejected",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "continuous-changing-source-never-stable",
+      "name": "first-tick-after-midnight-source-accepted",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "offline-gap-and-clock-reversal-reset-window",
+      "name": "utc-to-beijing-boundary",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "valid-complete-closed-period-ready",
+      "name": "offset-independent-same-instant",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "unchanged-no-work-day-can-be-explicitly-confirmed",
+      "name": "future-source-or-snapshot-rejected",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "prior-period-confirmation-does-not-authorize-new-day",
+      "name": "snapshot-before-source-update-rejected",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "unclosed-and-future-confirmations-rejected",
+      "name": "previous-day-snapshot-rejected",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "schema-date-and-hash-corruption-rejected",
+      "name": "missing-invalid-or-unqualified-time-rejected",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "weekly-coverage-checked-independently",
+      "name": "midnight-crossing-rechecks-today-before-send",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "corrupt-observation-restarts-safely",
+      "name": "leap-day-and-year-rollover",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "missing-and-corrupt-ready-file-block",
+      "name": "24-second-late-update-then-eligible",
       "passed": true,
       "detail": ""
     },
@@ -79,74 +80,79 @@
       "detail": ""
     },
     {
-      "name": "blocked-source-creates-no-send-intent",
+      "name": "stale-source-creates-no-intent-or-send",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "ready-current-source-sends-once",
+      "name": "current-source-sends-once-without-owner-confirmation",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "older-prepared-payload-preserved-and-not-sent",
+      "name": "old-frozen-payload-preserved-and-not-sent",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "uncertain-outcome-still-blocks-even-with-new-readiness",
+      "name": "uncertain-outcome-still-blocks-with-fresh-source",
       "passed": true,
       "detail": ""
     }
   ],
   "freshness_process": [
     {
-      "name": "qq_smtp-first-tick-holds-no-send-or-attempt",
+      "name": "qq_smtp-before-midnight-held-no-attempt",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "qq_smtp-stable-old-source-missing-confirmation-still-blocks",
+      "name": "qq_smtp-exact-midnight-held",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "qq_smtp-late-new-row-invalidates-prior-confirmation",
+      "name": "qq_smtp-regenerated-old-source-still-held",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "gmail_cli-first-tick-holds-no-send-or-attempt",
+      "name": "qq_smtp-missing-source-preserves-last-mirror",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "gmail_cli-stable-old-source-missing-confirmation-still-blocks",
+      "name": "qq_smtp-late-row-refresh-is-eligible-without-manual-confirmation",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "gmail_cli-late-new-row-invalidates-prior-confirmation",
+      "name": "fresh-qq-source-reaches-transport-preflight-without-send",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "confirmation-requires-explicit-owner-assertion",
+      "name": "gmail_cli-before-midnight-held-no-attempt",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "confirmation-rejects-reviewed-hash-mismatch",
+      "name": "gmail_cli-exact-midnight-held",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "confirmation-rejects-unclosed-day",
+      "name": "gmail_cli-regenerated-old-source-still-held",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "confirmation-writes-only-reviewed-source-readiness",
+      "name": "gmail_cli-missing-source-preserves-last-mirror",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "gmail_cli-late-row-refresh-is-eligible-without-manual-confirmation",
       "passed": true,
       "detail": ""
     }
@@ -481,20 +487,20 @@
   ],
   "mail_process": [
     {
-      "name": "no-due-no-model",
-      "passed": true
+      "passed": true,
+      "name": "no-due-no-model"
     },
     {
-      "name": "concurrent-skipped",
-      "passed": true
+      "passed": true,
+      "name": "concurrent-skipped"
     },
     {
-      "name": "corrupt-receipts-preserved",
-      "passed": true
+      "passed": true,
+      "name": "corrupt-receipts-preserved"
     },
     {
-      "name": "windows-subsystem",
-      "passed": true
+      "passed": true,
+      "name": "windows-subsystem"
     }
   ]
 }

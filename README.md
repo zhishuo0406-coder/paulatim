@@ -13,7 +13,7 @@ The repository and development folder are named **Paulatim**. The programs are `
 | Validate and mirror a local iCloud CSV while preserving its original bytes | Implemented |
 | Actual/effective minutes, task totals, daily totals, effective percentage | Implemented |
 | Daily/weekly HTML reports with a complete CSV snapshot and attachment | Implemented |
-| Strict source readiness before report submission (PAU-001) | Implemented, tested offline and deployed to the formal Windows controller on 2026-10-14; requires stable observation plus owner confirmation bound to source SHA-256 and closed report dates |
+| Source freshness before report submission (PAU-001) | Tested and deployed on 2026-10-14; refresh the iCloud CSV and require its modification time strictly after today's Beijing 00:00:00; no manual confirmation |
 | 08:00 Beijing scheduling and catch-up after Windows login | Implemented; late-login logic tested with a simulated clock |
 | Independent QQ sender through native SMTP, without a model call | Implemented; Windows credential vault, STARTTLS, persistent delivery ledger; see [sender migration](docs/MAIL_SENDER_MIGRATION.md) |
 | This computer's formal daily/weekly QQ-to-Gmail route | Migrated on 2026-10-12; existing task triggers and receipts preserved; post-cutover controller idle |
@@ -81,7 +81,7 @@ The controller uses Beijing time (`Asia/Shanghai`, UTC+08:00):
 
 The body and attachment include the complete validated CSV history, including rows outside the report period. A valid local iCloud file does not prove that the latest iPhone write has arrived on Windows.
 
-**Reports now fail closed:** before submitting either transport, the controller requires at least 120 seconds of unchanged source observations across ticks (no gap over 90 seconds), plus `source-ready.json` confirming the exact CSV hash and covering the report's closed Beijing dates. Missing or stale confirmation produces `waiting_source` without spending send attempts. Existing configurations have no bypass. Confirm each new period only after comparing the complete phone export with Windows, using `Confirm-SourceReady.ps1`; source changes invalidate that confirmation. This currently adds a manual confirmation step. It cannot automatically prove cloud completeness; see [PAU-001 implementation, confirmation and acceptance](docs/issues/PAU-001-ICLOUD-REPORT-FRESHNESS.md). The formal controller was upgraded on 2026-10-14 with its task definition and receipt ledgers preserved.
+**Reports now check the iCloud CSV's source time:** on each due tick, refresh/read and validate the iCloud source, then require its modification time to be strictly after the current Beijing day's `00:00:00` and no later than the current time. A newly generated snapshot of older data cannot satisfy this rule. An ineligible source produces `waiting_source` without spending send attempts; the next scheduled tick refreshes and checks again. No manual confirmation or 120-second waiting window is required. Existing source hashes, immutable send payloads and receipt protections remain. This is the user's chosen freshness threshold, based on the source metadata exposed by Windows iCloud, rather than proof that every cloud update has arrived. See [PAU-001 implementation and acceptance](docs/issues/PAU-001-ICLOUD-REPORT-FRESHNESS.md). The formal controller was upgraded with its task definition and receipt ledgers preserved.
 
 ## Run on Windows
 
