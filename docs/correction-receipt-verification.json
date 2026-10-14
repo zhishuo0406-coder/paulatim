@@ -1,0 +1,21 @@
+{
+  "issue": "PAU-001",
+  "report_date": "2026-10-13",
+  "snapshot_at_beijing": "2026-10-14T10:16:36.756599+08:00",
+  "gmail_received_on_beijing": "2026-10-14",
+  "checks": {
+    "sender_matches_approved_qq": true,
+    "recipient_matches_original_account": true,
+    "correction_subject_matches": true,
+    "original_intent_header_matches": true,
+    "exact_complete_html_matches": true,
+    "single_complete_csv_attachment": true,
+    "attachment_hash_matches_reviewed_download": true,
+    "attachment_388_bytes": true,
+    "snapshot_acquired_today_after_midnight": true,
+    "yesterday_report_period": true
+  },
+  "passed": true,
+  "original_receipts_preserved": true,
+  "correction_receipt_count": 1
+}

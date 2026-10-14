@@ -217,6 +217,7 @@ internal static class PaulatimDispatch
                     string frozenHash = Hash(Convert.FromBase64String(mail.csv_base64));
                     if (frozenHash != Convert.ToString(snapshot["source_sha256"])) throw new InvalidDataException("Previously attempted frozen report uses an older source. Hold for reviewed recovery; do not replace or send it.");
                     CheckFresh(snapshot);
+                    CheckFrozenFresh(mail);
                 });
                 state.receipts[request.key] = "smtp:" + id;
                 SaveState(state); // Persist each period before attempting another report.
@@ -253,6 +254,14 @@ internal static class PaulatimDispatch
         PaulatimFreshness.ValidateTimes(Convert.ToString(snapshot["source_modified_at_utc"]), Convert.ToString(snapshot["snapshot_at_utc"]), DateTimeOffset.UtcNow);
     }
 
+    private static void CheckFrozenFresh(PaulatimSmtp.Mail mail) {
+        // Inspect the actual immutable payload on a prepared retry, not only the
+        // candidate snapshot. CSV fields are HTML-encoded and cannot forge this footer.
+        var stamp = Regex.Match(mail.html, "</ul><p>数据快照：(?<snapshot>[^；<]+)；源文件修改时间：(?<source>[^。<]+)。</p>");
+        if (!stamp.Success) throw new InvalidDataException("Frozen report has no verifiable acquisition timestamp; hold for reviewed recovery.");
+        PaulatimFreshness.ValidateTimes(WebUtility.HtmlDecode(stamp.Groups["source"].Value), WebUtility.HtmlDecode(stamp.Groups["snapshot"].Value), DateTimeOffset.UtcNow);
+    }
+
     private static object BuildMail(Request request, Dictionary<string, object> snapshot) {
         var allRows = ((IEnumerable)snapshot["rows"]).Cast<object>().Select(x => (Dictionary<string, object>)x).ToList();
         DateTime start = Day(request.start_date), end = Day(request.end_date).AddDays(1);
@@ -277,7 +286,7 @@ internal static class PaulatimDispatch
         html.Append("<p>各事项合计：</p><ul>");
         foreach (var group in rows.GroupBy(x => Convert.ToString(x["task"]))) html.Append("<li>" + E(group.Key) + "：实际" + group.Sum(x => Convert.ToDecimal(x["actual_minutes"])) + "分钟，有效" + group.Sum(x => Convert.ToDecimal(x["effective_minutes"])) + "分钟。</li>");
         html.Append("</ul><p>数据快照：" + E(snapshot["snapshot_at_utc"]) + "；源文件修改时间：" + E(snapshot["source_modified_at_utc"]) + "。</p>");
-        html.Append("<p>发送检查：已重新读取iCloud来源；来源文件更新时间晚于发送当天北京时间00:00:00。</p>");
+        html.Append("<p>发送检查：已重新抓取本地iCloud数据；快照抓取时间晚于发送当天北京时间00:00:00。原始数据可以是报告所覆盖的昨天记录。</p>");
         var warnings = ((IEnumerable)snapshot["warnings"]).Cast<object>().ToList();
         if (warnings.Count > 0) { html.Append("<p>数据警告（原始记录保留）：</p><ul>"); foreach (var warning in warnings) html.Append("<li>" + E(warning) + "</li>"); html.Append("</ul>"); }
         html.Append("<p>完整工时原始快照（无表头时第一行也是记录；列为时间、事项、实际分钟、有效分钟）：</p><pre>" + E(snapshot["raw_csv"]) + "</pre>");

@@ -19,10 +19,11 @@ internal static class PaulatimFreshness
     public static void ValidateTimes(string sourceModified, string snapshotAt, DateTimeOffset now) {
         DateTimeOffset midnight = new DateTimeOffset(now.ToOffset(TimeSpan.FromHours(8)).Date, TimeSpan.FromHours(8));
         DateTimeOffset source = Timestamp(sourceModified), snapshot = Timestamp(snapshotAt);
-        // Strictly after 00:00:00; rebuilding old bytes must not advance the source time.
-        if (source <= midnight || source > now)
-            throw new InvalidDataException("iCloud CSV source update must be strictly after today's Beijing 00:00:00 and not in the future. Refresh/read the source again on the next tick; do not send the old report.");
+        // Yesterday's source data is expected in yesterday's daily report. The
+        // cutoff applies to successful acquisition, never to the source mtime.
+        if (source > now)
+            throw new InvalidDataException("Source modification time is in the future; refresh before sending.");
         if (snapshot <= midnight || snapshot > now || snapshot < source)
-            throw new InvalidDataException("Snapshot is stale or precedes the source update; refresh before sending.");
+            throw new InvalidDataException("Acquired snapshot must be strictly after today's Beijing 00:00:00, not in the future and not before the source update. Refresh before sending.");
     }
 }

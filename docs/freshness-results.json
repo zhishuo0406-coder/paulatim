@@ -1,31 +1,32 @@
 {
   "issue": "PAU-001",
-  "checked_at_beijing": "2026-10-14T10:05:54.4616107+08:00",
-  "scope": "Synthetic offline fixtures; no actual mail or phone-cloud completeness test",
-  "rule": "iCloud source modification time strictly after current Beijing day 00:00:00",
-  "total": 105,
-  "passed": 105,
+  "checked_at_beijing": "2026-10-14T10:26:23.8800086+08:00",
+  "scope": "Synthetic offline fixtures; sync checks reused from unchanged sync source; real correction readback recorded separately",
+  "rule": "successful local iCloud snapshot acquisition strictly after current Beijing day 00:00:00; yesterday source modification time allowed",
+  "total": 108,
+  "passed": 108,
   "source_sha256": {
-    "Paulatim/Deploy-Freshness.ps1": "5b1aa16ea9aeb6fcd40f8319cbfc109aeb71c5683a8fa15464c6f9a89268f548",
-    "tools/Test-FreshnessOffline.ps1": "7a1fb6917419735932f5e3fb3481d1cad3c286d0f7a56e4117e50d45710b15ae",
-    "Paulatim/PaulatimFreshness.cs": "41a781dae1ab2e8d8955a2101764c65c3f46b5f46bcbb566338abaaf8466f64d",
-    "tools/PaulatimFreshnessTests.cs": "9e3e9e301fb2465ab872a29155ed450932bfd6fdbcc398c4e9f106cb5f435711",
-    "Paulatim/PaulatimDispatch.cs": "701dd7bbceec312016fe0cb1142bc2cf04b7ffa74a15bd7dc25d2acc99cd6a00",
-    "Paulatim/PaulatimSmtp.cs": "04a573c73e580e2b126545765932431aa04ad4d5699f411113ecb44d92820b07"
+    "Paulatim/Send-Correction.ps1": "f85e15cc29dd6970f19a1947c289d05eb0a6d3405b89ccd2cf0eec322955028f",
+    "Paulatim/PaulatimDispatch.cs": "e682d6a32b8d83cb5ef67cb43380de602b106fa99097efa04f9295a76b9b66aa",
+    "tools/PaulatimFreshnessTests.cs": "d072905c534dae2acc3df76f3651d409962566aa99f9f6967fd057a291c413fc",
+    "Paulatim/PaulatimFreshness.cs": "ae8a7f382bb56ae37c40f4b6ba02bf98b30bd2849312dcece70fb0682a2e2d17",
+    "tools/Test-FreshnessOffline.ps1": "917465c0670276c4a525c78ed557a98c0ee407c0a2de842f55476aabab8fb828",
+    "Paulatim/PaulatimSmtp.cs": "04a573c73e580e2b126545765932431aa04ad4d5699f411113ecb44d92820b07",
+    "Paulatim/Deploy-Freshness.ps1": "0f31e5a86fce0e092bdd782f824690a07d627194cf17d05022f03e9a578afef2"
   },
   "freshness_unit": [
     {
-      "name": "before-midnight-source-blocked-even-with-new-snapshot",
+      "name": "before-midnight-snapshot-blocked",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "exact-000000-source-rejected",
+      "name": "exact-000000-snapshot-rejected",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "first-tick-after-midnight-source-accepted",
+      "name": "first-tick-after-midnight-snapshot-accepts-yesterday-data",
       "passed": true,
       "detail": ""
     },
@@ -70,7 +71,7 @@
       "detail": ""
     },
     {
-      "name": "24-second-late-update-then-eligible",
+      "name": "24-second-late-acquisition-then-eligible",
       "passed": true,
       "detail": ""
     },
@@ -80,12 +81,12 @@
       "detail": ""
     },
     {
-      "name": "stale-source-creates-no-intent-or-send",
+      "name": "stale-snapshot-creates-no-intent-or-send",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "current-source-sends-once-without-owner-confirmation",
+      "name": "fresh-snapshot-of-yesterday-data-sends-once",
       "passed": true,
       "detail": ""
     },
@@ -102,17 +103,17 @@
   ],
   "freshness_process": [
     {
-      "name": "qq_smtp-before-midnight-held-no-attempt",
+      "name": "qq_smtp-fresh-acquisition-of-yesterday-source-passes",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "qq_smtp-exact-midnight-held",
+      "name": "qq_smtp-exact-midnight-snapshot-held",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "qq_smtp-regenerated-old-source-still-held",
+      "name": "qq_smtp-old-snapshot-reacquired-before-send",
       "passed": true,
       "detail": ""
     },
@@ -132,17 +133,17 @@
       "detail": ""
     },
     {
-      "name": "gmail_cli-before-midnight-held-no-attempt",
+      "name": "gmail_cli-fresh-acquisition-of-yesterday-source-passes",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "gmail_cli-exact-midnight-held",
+      "name": "gmail_cli-exact-midnight-snapshot-held",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "gmail_cli-regenerated-old-source-still-held",
+      "name": "gmail_cli-old-snapshot-reacquired-before-send",
       "passed": true,
       "detail": ""
     },
@@ -153,6 +154,21 @@
     },
     {
       "name": "gmail_cli-late-row-refresh-is-eligible-without-manual-confirmation",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "actual-frozen-payload-with-today-acquisition-passes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "same-csv-frozen-payload-with-yesterday-acquisition-blocks",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "frozen-payload-with-missing-acquisition-metadata-blocks",
       "passed": true,
       "detail": ""
     }
@@ -487,20 +503,20 @@
   ],
   "mail_process": [
     {
-      "passed": true,
-      "name": "no-due-no-model"
+      "name": "no-due-no-model",
+      "passed": true
     },
     {
-      "passed": true,
-      "name": "concurrent-skipped"
+      "name": "concurrent-skipped",
+      "passed": true
     },
     {
-      "passed": true,
-      "name": "corrupt-receipts-preserved"
+      "name": "corrupt-receipts-preserved",
+      "passed": true
     },
     {
-      "passed": true,
-      "name": "windows-subsystem"
+      "name": "windows-subsystem",
+      "passed": true
     }
   ]
 }

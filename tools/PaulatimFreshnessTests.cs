@@ -14,14 +14,14 @@ internal static class FreshnessTests {
     private static void Valid(string source, string snapshot) { PaulatimFreshness.ValidateTimes(source,snapshot,Now); }
     private static int Main(string[] args) {
         string root=args[0]; Directory.CreateDirectory(root);
-        Test("before-midnight-source-blocked-even-with-new-snapshot",()=>Reject(()=>Valid("2026-10-13T23:59:59+08:00",Now.ToString("o"))));
-        Test("exact-000000-source-rejected",()=>Reject(()=>Valid("2026-10-14T00:00:00+08:00",Now.ToString("o"))));
-        Test("first-tick-after-midnight-source-accepted",()=>Valid("2026-10-14T00:00:00.0000001+08:00",Now.ToString("o")));
+        Test("before-midnight-snapshot-blocked",()=>Reject(()=>Valid("2026-10-13T20:00:00+08:00","2026-10-13T23:59:59+08:00")));
+        Test("exact-000000-snapshot-rejected",()=>Reject(()=>Valid("2026-10-13T20:00:00+08:00","2026-10-14T00:00:00+08:00")));
+        Test("first-tick-after-midnight-snapshot-accepts-yesterday-data",()=>Valid("2026-10-13T20:00:00+08:00","2026-10-14T00:00:00.0000001+08:00"));
         Test("utc-to-beijing-boundary",()=>{
-            Reject(()=>Valid("2026-10-13T16:00:00Z",Now.ToString("o")));
-            Valid("2026-10-13T16:00:01Z",Now.ToString("o"));
+            Reject(()=>Valid("2026-10-13T12:00:00Z","2026-10-13T16:00:00Z"));
+            Valid("2026-10-13T12:00:00Z","2026-10-13T16:00:01Z");
         });
-        Test("offset-independent-same-instant",()=>Valid("2026-10-13T17:00:01+01:00",Now.ToString("o")));
+        Test("offset-independent-same-instant",()=>Valid("2026-10-13T12:00:00Z","2026-10-13T17:00:01+01:00"));
         Test("future-source-or-snapshot-rejected",()=>{
             Reject(()=>Valid(Now.AddSeconds(1).ToString("o"),Now.ToString("o")));
             Reject(()=>Valid("2026-10-14T01:00:00+08:00",Now.AddSeconds(1).ToString("o")));
@@ -37,12 +37,12 @@ internal static class FreshnessTests {
         });
         Test("leap-day-and-year-rollover",()=>{
             PaulatimFreshness.ValidateTimes("2028-02-29T00:00:01+08:00","2028-02-29T08:00:00+08:00",DateTimeOffset.Parse("2028-02-29T08:00:01+08:00"));
-            Reject(()=>PaulatimFreshness.ValidateTimes("2026-12-31T23:59:59+08:00","2027-01-01T08:00:00+08:00",DateTimeOffset.Parse("2027-01-01T08:00:01+08:00")));
+            Reject(()=>PaulatimFreshness.ValidateTimes("2026-12-31T12:00:00+08:00","2026-12-31T23:59:59+08:00",DateTimeOffset.Parse("2027-01-01T08:00:01+08:00")));
         });
-        Test("24-second-late-update-then-eligible",()=>{
-            Reject(()=>Valid("2026-10-13T23:00:00+08:00",Now.ToString("o")));
+        Test("24-second-late-acquisition-then-eligible",()=>{
+            Reject(()=>Valid("2026-10-13T20:00:00+08:00","2026-10-13T23:00:00+08:00"));
             var later=Now.AddSeconds(24);
-            PaulatimFreshness.ValidateTimes(later.ToString("o"),later.AddSeconds(1).ToString("o"),later.AddSeconds(2));
+            PaulatimFreshness.ValidateTimes("2026-10-13T20:00:00+08:00",later.AddSeconds(1).ToString("o"),later.AddSeconds(2));
         });
         Test("source-read-lease-prevents-replacement-and-write",()=>{
             string path=Path.Combine(root,"source.csv"); File.WriteAllText(path,"old");
@@ -51,14 +51,14 @@ internal static class FreshnessTests {
         });
         var config=new PaulatimSmtp.Config {enabled=true,sender="fictional@qq.com",recipient="fictional@example.com",credential_target="Paulatim/SMTP/TEST"};
         Func<string,PaulatimSmtp.Mail> mail=csv=>PaulatimSmtp.Freeze("daily:2026-10-13",config,"[Paulatim test]","<p>synthetic</p>",Convert.ToBase64String(Encoding.UTF8.GetBytes(csv)));
-        Test("stale-source-creates-no-intent-or-send",()=>{
+        Test("stale-snapshot-creates-no-intent-or-send",()=>{
             string folder=Path.Combine(root,"blocked"); Directory.CreateDirectory(folder); int sends=0;
-            Reject(()=>PaulatimSmtp.DeliverGuarded(folder,mail("old"),m=>sends++,m=>Valid("2026-10-13T23:00:00+08:00",Now.ToString("o"))));
+            Reject(()=>PaulatimSmtp.DeliverGuarded(folder,mail("old"),m=>sends++,m=>Valid("2026-10-13T20:00:00+08:00","2026-10-13T23:00:00+08:00")));
             Assert(sends==0 && !File.Exists(Path.Combine(folder,"smtp-state.json")));
         });
-        Test("current-source-sends-once-without-owner-confirmation",()=>{
+        Test("fresh-snapshot-of-yesterday-data-sends-once",()=>{
             string folder=Path.Combine(root,"accepted"); Directory.CreateDirectory(folder); int sends=0;
-            Action<PaulatimSmtp.Mail> guard=m=>Valid("2026-10-14T01:00:00+08:00",Now.ToString("o"));
+            Action<PaulatimSmtp.Mail> guard=m=>Valid("2026-10-13T23:00:00+08:00",Now.ToString("o"));
             PaulatimSmtp.DeliverGuarded(folder,mail("new"),m=>sends++,guard);
             PaulatimSmtp.DeliverGuarded(folder,mail("new"),m=>sends++,guard); Assert(sends==1);
         });

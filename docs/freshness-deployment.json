@@ -1,16 +1,17 @@
 {
     "issue":  "PAU-001",
     "deployed_on_beijing":  "2026-10-14",
-    "installed_sha256":  "443ebc579d39fe20cb0508a877688a0d8ae0f70e31dbeb2e3fc095f4b104c73b",
+    "installed_sha256":  "1904964f20f978b489a7540bc79df345fbb2ca98af1f9762691b417f2340dbc6",
     "controller_exit_code":  0,
     "controller_status":  "idle",
     "task_definition_unchanged":  true,
-    "configurations_and_receipt_ledgers_unchanged":  true,
+    "configurations_unchanged":  true,
+    "original_receipts_preserved":  true,
     "manual_confirmation_required":  false,
-    "obsolete_confirmation_script_removed":  true,
-    "source_time_rule":  "source modified strictly after current Beijing day 00:00:00",
-    "current_source_and_snapshot_pass_gate":  false,
-    "new_mail_sent_during_deployment":  false,
+    "snapshot_time_rule":  "successful acquisition strictly after current Beijing day 00:00:00",
+    "yesterday_source_with_fresh_snapshot_accepted":  true,
+    "correction_receipt_count":  1,
+    "correction_received_in_gmail":  true,
     "private_backup_retained":  true,
     "phone_cloud_completeness_tested":  false
 }

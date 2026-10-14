@@ -37,13 +37,13 @@ try {
     if (!$config.enabled -or $config.transport -ne 'qq_smtp' -or $state.pending_job) { throw 'Expected enabled QQ configuration without a pending legacy job.' }
     $due = $dispatch.GetMethod('Due',$flags).Invoke($null,@($config,$state,[DateTimeOffset]::UtcNow))
     if ($due.Count) { throw 'Newly due reports exist; use a separate reviewed held-report cutover.' }
-    # Verify source time, rather than regenerated snapshot time, controls sending.
+    # Verify snapshot acquisition time controls sending; yesterday's source is valid.
     $blocked = $false
     $gateNow = [DateTimeOffset]::UtcNow
-    try { $freshness.GetMethod('ValidateTimes',$flags).Invoke($null,@('2000-01-01T00:00:00Z',$gateNow.ToString('o'),$gateNow)) }
+    try { $freshness.GetMethod('ValidateTimes',$flags).Invoke($null,@('2000-01-01T00:00:00Z','2000-01-01T00:00:01Z',$gateNow)) }
     catch { if ($_.Exception.InnerException -is [IO.InvalidDataException]) { $blocked=$true } else { throw } }
-    if (!$blocked) { throw 'Old source with a freshly generated snapshot did not block the candidate.' }
-    $freshness.GetMethod('ValidateTimes',$flags).Invoke($null,@($gateNow.AddSeconds(-1).ToString('o'),$gateNow.ToString('o'),$gateNow))
+    if (!$blocked) { throw 'Old acquired snapshot did not block the candidate.' }
+    $freshness.GetMethod('ValidateTimes',$flags).Invoke($null,@('2000-01-01T00:00:00Z',$gateNow.ToString('o'),$gateNow))
     if ($ValidateOnly) { 'Strict readiness deployment preflight passed; no runtime files or tasks changed.'; return }
     $backup = Join-Path $root ('backup-freshness-' + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss') + '-' + [Guid]::NewGuid().ToString('N').Substring(0,8))
     New-Item -ItemType Directory -Path $backup | Out-Null

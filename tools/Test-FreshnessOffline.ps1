@@ -43,12 +43,27 @@ foreach ($transport in @('qq_smtp','gmail_cli')) {
         $status=Get-Content (Join-Path $folder 'mail-status.json') -Raw -Encoding UTF8 | ConvertFrom-Json
         Assert ($status.status -eq 'waiting_source' -and [IO.File]::ReadAllText($statePath) -eq $before -and !(Test-Path (Join-Path $folder 'outbox')) -and !(Test-Path (Join-Path $folder 'smtp-state.json')))
     }
-    Check "$transport-before-midnight-held-no-attempt" { [IO.File]::SetLastWriteTimeUtc($source,$midnight.UtcDateTime.AddSeconds(-1)); Assert-Held }
-    Check "$transport-exact-midnight-held" { [IO.File]::SetLastWriteTimeUtc($source,$midnight.UtcDateTime); Assert-Held }
-    Check "$transport-regenerated-old-source-still-held" {
-        [IO.File]::SetLastWriteTimeUtc($source,$midnight.UtcDateTime.AddSeconds(-1)); Assert-Held
-        $snapshot=Get-Content (Join-Path $folder 'report-data.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-        Assert ([DateTimeOffset]::Parse($snapshot.snapshot_at_utc) -gt $midnight -and [DateTimeOffset]::Parse($snapshot.source_modified_at_utc) -lt $midnight)
+    $dispatch.GetField('Root',$flags).SetValue($null,($folder+[IO.Path]::DirectorySeparatorChar))
+    Check "$transport-fresh-acquisition-of-yesterday-source-passes" {
+        [IO.File]::SetLastWriteTimeUtc($source,$midnight.UtcDateTime.AddSeconds(-1))
+        $snapshot=$dispatch.GetMethod('Snapshot',$flags).Invoke($null,@())
+        $dispatch.GetMethod('CheckFresh',$flags).Invoke($null,@($snapshot))
+        Assert ([DateTimeOffset]::Parse($snapshot['snapshot_at_utc']) -gt $midnight -and [DateTimeOffset]::Parse($snapshot['source_modified_at_utc']) -lt $midnight -and [IO.File]::ReadAllText($statePath) -eq $before)
+    }
+    Check "$transport-exact-midnight-snapshot-held" {
+        $snapshot=$dispatch.GetMethod('Snapshot',$flags).Invoke($null,@())
+        $snapshot['snapshot_at_utc']=$midnight.ToString('o')
+        $rejected=$false
+        try { $dispatch.GetMethod('CheckFresh',$flags).Invoke($null,@($snapshot)) } catch { $rejected=$true }
+        Assert ($rejected -and [IO.File]::ReadAllText($statePath) -eq $before -and !(Test-Path (Join-Path $folder 'outbox')))
+    }
+    Check "$transport-old-snapshot-reacquired-before-send" {
+        $snapshot=$dispatch.GetMethod('Snapshot',$flags).Invoke($null,@())
+        $snapshot['snapshot_at_utc']=$midnight.AddSeconds(-1).ToString('o')
+        [IO.File]::WriteAllText((Join-Path $folder 'report-data.json'),$json.Serialize($snapshot),$utf8)
+        $refreshed=$dispatch.GetMethod('Snapshot',$flags).Invoke($null,@())
+        $dispatch.GetMethod('CheckFresh',$flags).Invoke($null,@($refreshed))
+        Assert ([DateTimeOffset]::Parse($refreshed['snapshot_at_utc']) -gt $midnight)
         Assert ([IO.File]::GetLastWriteTimeUtc($source) -eq $midnight.UtcDateTime.AddSeconds(-1))
     }
     Check "$transport-missing-source-preserves-last-mirror" {
@@ -58,7 +73,7 @@ foreach ($transport in @('qq_smtp','gmail_cli')) {
     }
     Check "$transport-late-row-refresh-is-eligible-without-manual-confirmation" {
         [IO.File]::AppendAllText($source,"`n$through 23:00,Fictional late task,15,10",$utf8)
-        [IO.File]::SetLastWriteTimeUtc($source,[DateTime]::UtcNow.AddSeconds(-1))
+        [IO.File]::SetLastWriteTimeUtc($source,$midnight.UtcDateTime.AddSeconds(-1))
         $dispatch.GetField('Root',$flags).SetValue($null,($folder+[IO.Path]::DirectorySeparatorChar))
         $snapshot=$dispatch.GetMethod('Snapshot',$flags).Invoke($null,@())
         $dispatch.GetMethod('CheckFresh',$flags).Invoke($null,@($snapshot))
@@ -74,6 +89,23 @@ foreach ($transport in @('qq_smtp','gmail_cli')) {
             Assert (!(Test-Path (Join-Path $folder 'smtp-state.json')) -and [IO.File]::ReadAllText($statePath) -eq $before)
         }
     }
+}
+$snapshot=$dispatch.GetMethod('Snapshot',$flags).Invoke($null,@())
+$request=[Activator]::CreateInstance($dispatch.GetNestedType('Request'))
+$request.key='daily:'+$through; $request.kind='daily'; $request.start_date=$through; $request.end_date=$through; $request.subject='[Paulatim test]'
+$built=$dispatch.GetMethod('BuildMail',$flags).Invoke($null,@($request,$snapshot))
+$frozen=[Activator]::CreateInstance($assembly.GetType('PaulatimSmtp').GetNestedType('Mail'))
+$frozen.html=$built.payload.parts[0].body.content
+Check 'actual-frozen-payload-with-today-acquisition-passes' { $dispatch.GetMethod('CheckFrozenFresh',$flags).Invoke($null,@($frozen)) }
+Check 'same-csv-frozen-payload-with-yesterday-acquisition-blocks' {
+    $frozen.html=$built.payload.parts[0].body.content.Replace($snapshot['snapshot_at_utc'],$midnight.AddSeconds(-1).ToString('o'))
+    $blocked=$false; try{$dispatch.GetMethod('CheckFrozenFresh',$flags).Invoke($null,@($frozen))}catch{$blocked=$true}
+    Assert $blocked
+}
+Check 'frozen-payload-with-missing-acquisition-metadata-blocks' {
+    $frozen.html='<p>No acquisition metadata</p>'
+    $blocked=$false; try{$dispatch.GetMethod('CheckFrozenFresh',$flags).Invoke($null,@($frozen))}catch{$blocked=$true}
+    Assert $blocked
 }
 $results | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $OutputDirectory 'integration-results.json') -Encoding UTF8
 $results | Format-Table -AutoSize
