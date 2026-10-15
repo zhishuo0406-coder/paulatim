@@ -4,6 +4,9 @@ using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Net.Mail;
+using System.Net.Sockets;
+using System.Net.Security;
+using System.Security.Authentication;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -38,6 +41,9 @@ internal static class PaulatimSmtp
         public string error_type { get; set; }
         public int? smtp_status_code { get; set; }
         public Mail frozen { get; set; }
+        public string stage { get; set; }
+        public string diagnostic { get; set; }
+        public string attempted_at_utc { get; set; }
     }
     public sealed class Ledger {
         public int schema_version { get; set; }
@@ -99,6 +105,14 @@ internal static class PaulatimSmtp
                 if (record.phase != "prepared" || record.frozen == null) throw new InvalidDataException("Invalid SMTP delivery phase.");
                 ValidateMail(record.frozen);
                 if (record.frozen.key != requested.key || record.frozen.message_id != record.message_id) throw new InvalidDataException("Frozen SMTP identity mismatch.");
+                // A diagnosed pre-submission failure cannot have delivered mail.
+                // Refresh only that safely retryable payload so later iCloud updates
+                // do not strand retries behind an obsolete attachment/snapshot.
+                if (record.error_type == "TransportFailure") {
+                    if (beforeAttempt != null) beforeAttempt(requested);
+                    record.frozen = requested;
+                    Save(path,ledger);
+                }
             } else {
                 if (beforeAttempt != null) beforeAttempt(requested);
                 record = new Delivery { phase="prepared", message_id=requested.message_id, frozen=requested };
@@ -109,20 +123,28 @@ internal static class PaulatimSmtp
             if (beforeAttempt != null) beforeAttempt(record.frozen);
             record.phase = "attempting";
             Save(path, ledger);
+            record.attempted_at_utc = DateTimeOffset.UtcNow.ToString("o");
+            Save(path, ledger);
             try { send(record.frozen); }
             catch (Exception error) {
                 var smtpError = error as SmtpException;
+                var transportError = error as TransportFailure;
                 record.error_type = error.GetType().Name;
-                record.smtp_status_code = smtpError == null ? (int?)null : (int)smtpError.StatusCode;
+                record.smtp_status_code = transportError != null ? transportError.Code : smtpError == null ? (int?)null : (int)smtpError.StatusCode;
+                record.stage = transportError == null ? "legacy_unknown" : transportError.Stage;
+                record.diagnostic = Diagnostic(error);
                 // 535 is an authentication refusal before message submission, not ambiguous acceptance.
                 bool authenticationRefused = record.smtp_status_code == 535;
-                record.phase = authenticationRefused ? "prepared" : "uncertain";
+                bool safe = authenticationRefused || (transportError != null && transportError.SafeToRetry);
+                record.phase = safe ? "prepared" : "uncertain";
                 Save(path, ledger);
                 if (authenticationRefused) throw new InvalidOperationException("QQ SMTP authentication was refused (535); update the client authorization code.");
+                if (safe) throw new InvalidOperationException("SMTP did not submit the message; bounded retry is safe. Stage: " + record.stage);
                 throw new InvalidOperationException("SMTP attempt did not complete reliably; recipient verification is required before resending.");
             }
             record.phase = "accepted";
             record.error_type = null; record.smtp_status_code = null;
+            record.stage = "accepted"; record.diagnostic = null;
             record.acknowledged_at_utc = DateTimeOffset.UtcNow.ToString("o", CultureInfo.InvariantCulture);
             record.frozen = null; // Accepted ledger retains metadata, not another full-history copy.
             Save(path, ledger);
@@ -137,6 +159,13 @@ internal static class PaulatimSmtp
             if (File.Exists(path)) File.Replace(temp,path,null); else File.Move(temp,path);
         } finally { if (File.Exists(temp)) File.Delete(temp); }
     }
+    public static Delivery Inspect(string root,string key) {
+        string path=Path.Combine(root,"smtp-state.json");
+        if(!File.Exists(path)) return null;
+        var ledger=Json.Deserialize<Ledger>(File.ReadAllText(path,Utf8));
+        if(ledger==null || ledger.schema_version!=1 || ledger.deliveries==null) throw new InvalidDataException("Unsupported SMTP ledger; refusing recovery.");
+        Delivery value;return ledger.deliveries.TryGetValue(key,out value)?value:null;
+    }
     public static string ReadCredential(Config config) {
         IntPtr pointer;
         if (!CredRead(config.credential_target, 1, 0, out pointer)) throw new InvalidOperationException("QQ credential is not stored for this Windows user.");
@@ -148,24 +177,119 @@ internal static class PaulatimSmtp
         } finally { CredFree(pointer); }
     }
     public static void Send(Mail frozen, string authorizationCode) {
+        Transfer(frozen,authorizationCode,false);
+    }
+    public static void Probe(Config config,string authorizationCode) {
+        ValidateConfig(config,config.recipient);
+        Transfer(Freeze("probe:smtp",config,"[Paulatim连接检查]","<p>Not submitted</p>",Convert.ToBase64String(Utf8.GetBytes("probe"))),authorizationCode,true);
+    }
+    private static void Transfer(Mail frozen,string authorizationCode,bool probe) {
         ValidateMail(frozen);
         if (String.IsNullOrWhiteSpace(authorizationCode)) throw new InvalidOperationException("QQ authorization code missing.");
-        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-        using (var message = new MailMessage())
-        using (var smtp = new SmtpClient("smtp.qq.com",587)) {
-            message.From = new MailAddress(frozen.sender,"Paulatim",Encoding.UTF8);
-            message.To.Add(new MailAddress(frozen.recipient));
-            message.Subject = frozen.subject; message.SubjectEncoding=Encoding.UTF8;
-            message.Body=frozen.html; message.BodyEncoding=Encoding.UTF8; message.IsBodyHtml=true;
-            message.Headers.Add("Message-ID",frozen.message_id);
-            using (var csv = new MemoryStream(Convert.FromBase64String(frozen.csv_base64))) {
-                message.Attachments.Add(new Attachment(csv,"work_log.csv","text/csv"));
-                smtp.EnableSsl=true; smtp.UseDefaultCredentials=false;
-                smtp.Credentials=new NetworkCredential(frozen.sender,authorizationCode); smtp.Timeout=60000;
-                // No certificate validation bypass, proxy rewrite, or model API.
-                smtp.Send(message);
+        string stage = "connect";
+        try {
+            using (var socket = new TcpClient()) {
+                var pending = socket.BeginConnect("smtp.qq.com",587,null,null);
+                using (pending.AsyncWaitHandle) {
+                    if (!pending.AsyncWaitHandle.WaitOne(15000)) throw new TimeoutException("SMTP connect deadline");
+                    socket.EndConnect(pending);
+                }
+                socket.ReceiveTimeout=15000; socket.SendTimeout=15000;
+                using (var network=socket.GetStream()) {
+                    stage="greeting"; Expect(network,220);
+                    stage="starttls";
+                    string features=Command(network,"EHLO paulatim.local",250);
+                    if (!Regex.IsMatch(features,@"(?im)^250[ -]STARTTLS\s*$")) throw new IOException("SMTP server did not offer STARTTLS");
+                    Command(network,"STARTTLS",220);
+                    // Default SslStream validation verifies the certificate and hostname.
+                    using (var tls=new SslStream(network,false)) {
+                        stage="tls"; tls.ReadTimeout=15000; tls.WriteTimeout=15000;
+                        tls.AuthenticateAsClient("smtp.qq.com",null,SslProtocols.Tls12,true);
+                        SubmitGuarded(tls,frozen,authorizationCode,probe);
+                        stage="accepted";
+                    }
+                }
             }
+        } catch (TransportFailure) { throw;
+        } catch (ReplyFailure error) {
+            // An explicit 4xx/5xx reply rejects the transaction, including after DATA.
+            throw new TransportFailure(stage,true,error.Code,error);
+        } catch (Exception error) {
+            if(stage=="accepted") return;
+            throw new TransportFailure(stage,true,null,error);
         }
+    }
+
+    internal sealed class TransportFailure : Exception {
+        public readonly string Stage; public readonly bool SafeToRetry; public readonly int? Code;
+        public TransportFailure(string stage,bool safe,int? code,Exception inner) : base("SMTP transport failed at " + stage,inner) {Stage=stage;SafeToRetry=safe;Code=code;}
+    }
+    private sealed class ReplyFailure : Exception {
+        public readonly int Code;
+        public ReplyFailure(int code) : base("SMTP reply " + code) {Code=code;}
+    }
+    // Read only type/code diagnostics: never retain SMTP replies, AUTH text or secrets.
+    private static string Diagnostic(Exception error) {
+        var result=new StringBuilder();
+        for (Exception e=error;e!=null;e=e.InnerException) {
+            if(result.Length>0) result.Append(" > "); result.Append(e.GetType().Name);
+            var socket=e as SocketException; if(socket!=null) result.Append(":"+socket.SocketErrorCode);
+            var transport=e as TransportFailure; if(transport!=null) result.Append(":"+transport.Stage);
+        }
+        return result.ToString();
+    }
+    private static string Expect(Stream stream,int expected) {
+        var all=new StringBuilder(); int code=0;
+        for(int lines=0;lines<100;lines++) {
+            var line=new StringBuilder();
+            while(true) {int b=stream.ReadByte();if(b<0) throw new EndOfStreamException("SMTP response ended");if(b=='\n') break; if(b!='\r') line.Append((char)b);if(line.Length>2048) throw new IOException("SMTP reply too long");}
+            string text=line.ToString();int value;
+            if(text.Length<4 || !Int32.TryParse(text.Substring(0,3),out value) || text[3]!=' ' && text[3]!='-' || code!=0 && code!=value) throw new IOException("Invalid SMTP reply");
+            code=value; all.AppendLine(text);
+            if(text[3]==' ') {if(code!=expected) throw new ReplyFailure(code);return all.ToString();}
+        }
+        throw new IOException("Too many SMTP reply lines");
+    }
+    private static void Put(Stream stream,string text) {byte[] bytes=Encoding.ASCII.GetBytes(text);stream.Write(bytes,0,bytes.Length);stream.Flush();}
+    private static string Command(Stream stream,string text,int expected) {Put(stream,text+"\r\n");return Expect(stream,expected);}
+    internal static void SubmitGuarded(Stream stream,Mail mail,string secret,bool probe=false) {
+        string stage="authenticate";bool committed=false;
+        try { Submit(stream,mail,secret,next=>{stage=next;if(next=="commit") committed=true;},probe); }
+        catch(ReplyFailure error) {throw new TransportFailure(stage,!committed || error.Code>=400 && error.Code<=599,error.Code,error);}
+        catch(Exception error) {throw new TransportFailure(stage,!committed,null,error);}
+    }
+    internal static void Submit(Stream stream,Mail mail,string secret,Action<string> progress,bool probe=false) {
+        progress("authenticate");
+        string features=Command(stream,"EHLO paulatim.local",250);
+        if(!Regex.IsMatch(features,@"(?im)^250[ -]AUTH[^\r\n]*\bLOGIN\b")) throw new IOException("SMTP AUTH LOGIN unavailable");
+        Command(stream,"AUTH LOGIN",334);
+        Command(stream,Convert.ToBase64String(Utf8.GetBytes(mail.sender)),334);
+        Command(stream,Convert.ToBase64String(Utf8.GetBytes(secret)),235);
+        progress("envelope");Command(stream,"MAIL FROM:<"+mail.sender+">",250);Command(stream,"RCPT TO:<"+mail.recipient+">",250);
+        if(probe) {Command(stream,"RSET",250);return;}
+        progress("data");Command(stream,"DATA",354);
+        Put(stream,Mime(mail));
+        // No end-of-DATA marker has been written before this point. All MIME bodies
+        // are base64 and cannot accidentally contain a line consisting of a dot.
+        progress("commit");Put(stream,".\r\n");Expect(stream,250);
+        progress("accepted");
+        // Close the connection after acceptance; QUIT failure cannot negate 250.
+    }
+    internal static string Mime(Mail mail) {
+        ValidateMail(mail);
+        string boundary="paulatim_"+Guid.NewGuid().ToString("N");
+        var subject=new StringBuilder();
+        for(int i=0;i<mail.subject.Length;) {
+            int count=Math.Min(10,mail.subject.Length-i);
+            if(i+count<mail.subject.Length && Char.IsHighSurrogate(mail.subject[i+count-1])) count--;
+            if(subject.Length>0) subject.Append("\r\n ");
+            subject.Append("=?UTF-8?B?"+Convert.ToBase64String(Utf8.GetBytes(mail.subject.Substring(i,count)))+"?=");i+=count;
+        }
+        return "From: Paulatim <"+mail.sender+">\r\nTo: "+mail.recipient+"\r\nDate: "+DateTime.UtcNow.ToString("ddd, dd MMM yyyy HH:mm:ss +0000",CultureInfo.InvariantCulture)+
+            "\r\nSubject: "+subject+"\r\nMessage-ID: "+mail.message_id+"\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=\""+boundary+"\"\r\n\r\n--"+boundary+
+            "\r\nContent-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: base64\r\n\r\n"+Convert.ToBase64String(Utf8.GetBytes(mail.html),Base64FormattingOptions.InsertLineBreaks)+
+            "\r\n--"+boundary+"\r\nContent-Type: text/csv; name=\"work_log.csv\"\r\nContent-Disposition: attachment; filename=\"work_log.csv\"\r\nContent-Transfer-Encoding: base64\r\n\r\n"+
+            Convert.ToBase64String(Convert.FromBase64String(mail.csv_base64),Base64FormattingOptions.InsertLineBreaks)+"\r\n--"+boundary+"--\r\n";
     }
     public static void RemoveCredential(Config config) {
         ValidateConfig(config,config.recipient);

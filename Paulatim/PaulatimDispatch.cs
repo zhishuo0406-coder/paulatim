@@ -107,13 +107,20 @@ internal static class PaulatimDispatch
         List<Request> due = verification ? new List<Request> { new Request { key = smtp ? "verification:qq-smtp-v1" : "verification:v3", kind = "verification", start_date = Date(now.ToOffset(TimeSpan.FromHours(8)).Date), end_date = Date(now.ToOffset(TimeSpan.FromHours(8)).Date), subject = smtp ? "[Paulatim验证] QQ独立发件与完整工时快照" : "[Paulatim补发验证] v3 开机补发与无窗口执行", legacy_subject = smtp ? null : "[WorkLog补发验证] v3 开机补发与无窗口执行" } } : Due(config, state, now);
         due = due.Where(x => !state.receipts.ContainsKey(x.key)).ToList();
         if (due.Count == 0) { Status("idle", "Nothing due; no model process started.", null); return 0; }
+        if (smtp) foreach(var request in due) {
+            var delivery=PaulatimSmtp.Inspect(Root,request.key);
+            if(delivery!=null && (delivery.phase=="uncertain" || delivery.phase=="attempting")) {
+                Status("attention_required","SMTP result is uncertain for " + request.key + "; recipient reconciliation required. Stage=" + delivery.stage + "; diagnostic=" + delivery.diagnostic,due);
+                return 1;
+            }
+        }
         if (smtp && !String.IsNullOrEmpty(state.pending_job)) throw new InvalidDataException("A legacy Gmail job remains pending; verify it before switching senders.");
         if (Recipient == "your-account@gmail.com") throw new InvalidDataException("Configure your own Gmail recipient before sending.");
         string signature = String.Join("|", due.Select(x => x.key).ToArray());
         if (state.signature != signature) { state.signature = signature; state.attempts = 0; state.next_attempt_at_utc = null; }
         DateTimeOffset next;
         if (!verification && state.next_attempt_at_utc != null && DateTimeOffset.TryParse(state.next_attempt_at_utc, out next) && now < next) { Status("waiting_retry", "Retry backoff is active.", due); return 0; }
-        if (state.attempts >= config.max_attempts_per_period) { Status("attention_required", "Attempt limit reached; no repeated model launches.", due); return 1; }
+        if (state.attempts >= config.max_attempts_per_period) { Status("attention_required", "Report attempt limit reached; inspect SMTP diagnostics or the Gmail worker result.", due); return 1; }
 
         Dictionary<string, object> snapshot;
         try { snapshot = Snapshot(); }
@@ -139,7 +146,10 @@ internal static class PaulatimDispatch
 
     private static int DispatchReady(Config config, State state, List<Request> due, Dictionary<string, object> snapshot, bool smtp, DateTimeOffset now) {
         if (!NetworkInterface.GetIsNetworkAvailable() || (!smtp && !ProxyReady())) { Status("waiting_network", "Required network is not yet available; retry on next local tick.", due); return 0; }
-        if (smtp) return DispatchSmtp(config, state, due, snapshot);
+        if (smtp) {
+            try { return DispatchSmtp(config, state, due, snapshot); }
+            catch(Exception error) { Status("attention_required",error.GetType().Name+": "+error.Message,due);return 1; }
+        }
         string codex = FindCodex();
         if (!IsChatGptLogin(codex)) { Status("attention_required", "Codex is not signed in with ChatGPT; API-key sending is prohibited.", due); return 1; }
         string job = Path.Combine(Root, "outbox", DateTime.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N"));
@@ -226,10 +236,11 @@ internal static class PaulatimDispatch
             SaveState(state);
             Status("smtp_accepted","QQ SMTP acknowledged these reports. This is not proof of Gmail inbox delivery.",due);
             return 0;
-        } catch {
+        } catch (Exception error) {
             state.next_attempt_at_utc=DateTimeOffset.UtcNow.AddMinutes(state.attempts == 1 ? 5 : 15).ToString("o");
             SaveState(state);
-            Status("attention_required","SMTP did not finish reliably. No fallback or blind resend; verify the recipient before recovery.",due);
+            bool safe=due.Where(x=>!state.receipts.ContainsKey(x.key)).All(x=> {var d=PaulatimSmtp.Inspect(Root,x.key);return d==null || d.phase=="prepared";});
+            Status(safe && state.attempts<config.max_attempts_per_period ? "retry_scheduled" : "attention_required",error.Message,due);
             return 1;
         } finally { authorizationCode=null; }
     }
