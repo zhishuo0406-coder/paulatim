@@ -166,6 +166,10 @@ internal static class PaulatimSmtp
         if(ledger==null || ledger.schema_version!=1 || ledger.deliveries==null) throw new InvalidDataException("Unsupported SMTP ledger; refusing recovery.");
         Delivery value;return ledger.deliveries.TryGetValue(key,out value)?value:null;
     }
+    public static bool IsConnectionWait(Delivery delivery) {
+        return delivery!=null && delivery.phase=="prepared" && delivery.error_type=="TransportFailure" && delivery.stage=="connect" && delivery.diagnostic!=null &&
+            (delivery.diagnostic.Contains("SocketException:") || delivery.diagnostic.Contains("TimeoutException"));
+    }
     public static string ReadCredential(Config config) {
         IntPtr pointer;
         if (!CredRead(config.credential_target, 1, 0, out pointer)) throw new InvalidOperationException("QQ credential is not stored for this Windows user.");

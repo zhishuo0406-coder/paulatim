@@ -60,6 +60,35 @@ class PaulatimSmtpTransportTests {
    var after=json.Deserialize<PaulatimDispatch.State>(File.ReadAllText(Path.Combine(folder,"mail-state.json")));Assert(after.attempts==1 && after.receipts.Count==0,"Guard ticks spent attempts or fabricated receipt");
    Assert(File.ReadAllText(Path.Combine(folder,"mail-status.json")).Contains("EndOfStreamException"),"Status replaced original cause");
   });
+  Test("dns-failure-waits-without-exhausting-send-budget",()=>{
+   var d=new PaulatimSmtp.Delivery {phase="prepared",error_type="TransportFailure",stage="connect",diagnostic="TransportFailure:connect > SocketException:HostNotFound"};
+   var state=new PaulatimDispatch.State();var now=DateTimeOffset.UtcNow;
+   for(int i=0;i<10;i++){state.attempts++;Assert(PaulatimDispatch.ApplyConnectionBackoff(state,new[]{d,(PaulatimSmtp.Delivery)null},now),"DNS failure did not wait");Assert(state.attempts==0 && DateTimeOffset.Parse(state.next_attempt_at_utc)==now.AddMinutes(15),"Connection failure exhausted attempts or wrong delay");}
+  });
+  Test("connection-timeout-keeps-earlier-send-attempts",()=>{
+   var d=new PaulatimSmtp.Delivery {phase="prepared",error_type="TransportFailure",stage="connect",diagnostic="TransportFailure:connect > TimeoutException"};
+   var state=new PaulatimDispatch.State {attempts=3};Assert(PaulatimDispatch.ApplyConnectionBackoff(state,new[]{d},DateTimeOffset.UtcNow) && state.attempts==2,"Refunded earlier attempts");
+  });
+  Test("nonconnection-or-ambiguous-failure-keeps-budget",()=>{
+   foreach(string phase in new[]{"uncertain","attempting","accepted","prepared"}) {
+    var d=new PaulatimSmtp.Delivery {phase=phase,error_type="TransportFailure",stage=phase=="prepared"?"authenticate":"connect",diagnostic="TransportFailure:connect > SocketException:HostNotFound"};
+    var state=new PaulatimDispatch.State {attempts=3};Assert(!PaulatimDispatch.ApplyConnectionBackoff(state,new[]{d},DateTimeOffset.UtcNow) && state.attempts==3,"Unsafe refund");
+   }
+   var known=new PaulatimSmtp.Delivery {phase="prepared",error_type="TransportFailure",stage="connect",diagnostic="SocketException:HostNotFound"};
+   var unknown=new PaulatimSmtp.Delivery {phase="prepared",error_type="SmtpException"};
+   Assert(!PaulatimDispatch.ApplyConnectionBackoff(new PaulatimDispatch.State(),new[]{known,unknown},DateTimeOffset.UtcNow),"Mixed failure bypassed budget");
+  });
+  Test("upgrade-refunds-only-last-known-connection-failure",()=>{
+   string folder=Path.GetFullPath(Path.Combine(root,"controller"));var json=new JavaScriptSerializer();
+   var ledger=json.Deserialize<PaulatimSmtp.Ledger>(File.ReadAllText(Path.Combine(folder,"smtp-state.json")));
+   foreach(var d in ledger.deliveries.Values){d.phase="prepared";d.error_type="TransportFailure";d.stage="connect";d.diagnostic="TransportFailure:connect > SocketException:HostNotFound";}
+   var path=Path.Combine(folder,"mail-state.json");var state=json.Deserialize<PaulatimDispatch.State>(File.ReadAllText(path));state.attempts=3;state.next_attempt_at_utc=DateTimeOffset.UtcNow.AddMinutes(15).ToString("o");
+   File.WriteAllText(path,json.Serialize(state));File.WriteAllText(Path.Combine(folder,"smtp-state.json"),json.Serialize(ledger));
+   var type=typeof(PaulatimDispatch);var flags=System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static;var field=type.GetField("Root",flags);var saved=field.GetValue(null);
+   try{field.SetValue(null,folder);Assert((int)type.GetMethod("Dispatch",flags).Invoke(null,new object[]{false})==1,"Missing synthetic source unexpectedly passed");}finally{field.SetValue(null,saved);}
+   state=json.Deserialize<PaulatimDispatch.State>(File.ReadAllText(path));Assert(state.attempts==2 && state.next_attempt_at_utc==null && state.receipts.Count==0,"Historical known network attempt stranded or earlier attempts discarded");
+   Assert(File.ReadAllText(Path.Combine(folder,"mail-status.json")).Contains("waiting_source"),"Upgrade did not reach source preflight");
+  });
  }
  static int Main(string[] args) {root=args[0];Directory.CreateDirectory(root);MainTest();return failures==0?0:1;}
 }

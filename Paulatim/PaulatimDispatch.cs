@@ -118,6 +118,11 @@ internal static class PaulatimDispatch
         if (Recipient == "your-account@gmail.com") throw new InvalidDataException("Configure your own Gmail recipient before sending.");
         string signature = String.Join("|", due.Select(x => x.key).ToArray());
         if (state.signature != signature) { state.signature = signature; state.attempts = 0; state.next_attempt_at_utc = null; }
+        // Upgrade recovery: refund only the last proven connection failure, not
+        // earlier authentication/submission failures or any uncertain delivery.
+        if (smtp && state.attempts>=config.max_attempts_per_period && OnlyConnectionWaits(due.Select(x=>PaulatimSmtp.Inspect(Root,x.key)).ToArray())) {
+            state.attempts--;state.next_attempt_at_utc=null;SaveState(state);
+        }
         DateTimeOffset next;
         if (!verification && state.next_attempt_at_utc != null && DateTimeOffset.TryParse(state.next_attempt_at_utc, out next) && now < next) { Status("waiting_retry", "Retry backoff is active.", due); return 0; }
         if (state.attempts >= config.max_attempts_per_period) { Status("attention_required", "Report attempt limit reached; inspect SMTP diagnostics or the Gmail worker result.", due); return 1; }
@@ -237,12 +242,28 @@ internal static class PaulatimDispatch
             Status("smtp_accepted","QQ SMTP acknowledged these reports. This is not proof of Gmail inbox delivery.",due);
             return 0;
         } catch (Exception error) {
+            var pending=due.Where(x=>!state.receipts.ContainsKey(x.key)).Select(x=>PaulatimSmtp.Inspect(Root,x.key)).ToArray();
+            if (ApplyConnectionBackoff(state,pending,DateTimeOffset.UtcNow)) {
+                SaveState(state);
+                Status("waiting_network","SMTP connection unavailable before submission; retry in 15 minutes without consuming a send attempt. " + error.Message,due);
+                return 1;
+            }
             state.next_attempt_at_utc=DateTimeOffset.UtcNow.AddMinutes(state.attempts == 1 ? 5 : 15).ToString("o");
             SaveState(state);
             bool safe=due.Where(x=>!state.receipts.ContainsKey(x.key)).All(x=> {var d=PaulatimSmtp.Inspect(Root,x.key);return d==null || d.phase=="prepared";});
             Status(safe && state.attempts<config.max_attempts_per_period ? "retry_scheduled" : "attention_required",error.Message,due);
             return 1;
         } finally { authorizationCode=null; }
+    }
+
+    private static bool OnlyConnectionWaits(PaulatimSmtp.Delivery[] pending) {
+        return pending!=null && pending.Any(PaulatimSmtp.IsConnectionWait) && pending.All(x=>x==null || PaulatimSmtp.IsConnectionWait(x));
+    }
+    public static bool ApplyConnectionBackoff(State state,PaulatimSmtp.Delivery[] pending,DateTimeOffset now) {
+        if(!OnlyConnectionWaits(pending)) return false;
+        state.attempts=Math.Max(0,state.attempts-1);
+        state.next_attempt_at_utc=now.AddMinutes(15).ToString("o");
+        return true;
     }
 
     private static Dictionary<string, object> Snapshot() {
